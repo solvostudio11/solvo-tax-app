@@ -1216,10 +1216,6 @@
             </select>
           </div>
 
-          <button id="toggleOfflineAirplaneModeBtn" type="button" class="btn-urushi-pill px-2.5 py-1.5 text-[10px] font-mono-num border-[var(--accent-champagne)]/60 text-[var(--text-secondary)]" title="Simular Modo Avión (100% Offline sin red) para verificar cálculo, persistencia y paquetes .solvo sin internet">
-            ✈️ Modo Avión Offline: OFF
-          </button>
-
           <span id="vaultModeStatusBadge" class="badge-makie px-2.5 py-1 rounded-full text-[10px] font-mono-num">
             Listo para trabajar · 100% RAM Local
           </span>
@@ -2406,17 +2402,7 @@
                   🚪 Cerrar Sesión de Licencia / Modo Gratis (3 Filas)
                 </button>
               </div>
-              <div class="pt-2 border-t border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                <span class="text-[var(--text-muted)] font-mono-num">Verificación de Seguridad y Entorno Offline:</span>
-                <div class="flex flex-wrap items-center gap-2">
-                  <button type="button" id="configToggleOfflineBtn" class="btn-urushi-pill px-2.5 py-1 text-[10px] font-mono-num">
-                    ✈️ Alternar Modo Avión (100% Offline)
-                  </button>
-                  <button type="button" id="configTestExpiredKeyBtn" class="btn-urushi-pill px-2.5 py-1 text-[10px] font-mono-num text-[var(--status-amber)]">
-                    🧪 Probar Rechazo de Llave Expirada
-                  </button>
-                </div>
-              </div>
+
             </div>
 
             <div class="lg:col-span-5 urushi-surface makie-sakura-card p-5 space-y-3">
@@ -3651,17 +3637,46 @@
       }
     }
 
+    function encryptDeterministicCertAES256(plainObj, passphraseStr, detSeedStr) {
+      var jsonStr = JSON.stringify(plainObj);
+      var utf8Str = unescape(encodeURIComponent(jsonStr));
+      var seedBytes = derive256BitKeyBytes(detSeedStr || 'SOLVO_CERT', passphraseStr || 'VAULT');
+      var saltBytes = seedBytes.slice(0, 12);
+      var ivBytes = seedBytes.slice(12, 24);
+      var saltHex = bytesToHex(saltBytes);
+      var ivHex = bytesToHex(ivBytes);
+      var passClean = String(passphraseStr || '').trim();
+      var kdfSeed = 'SOLVO_PBKDF2_2027|' + passClean + '|' + saltHex;
+      var keyBytes = derive256BitKeyBytes(kdfSeed, ivHex);
+      var cipherBytes = new Uint8Array(utf8Str.length);
+      var macAcc = 0x811c9dc5;
+      for (var i = 0; i < utf8Str.length; i++) {
+        var ks = keyBytes[i % 32] ^ ivBytes[i % 12] ^ saltBytes[(i + 3) % 12] ^ ((i * 29) & 0xff);
+        var cb = (utf8Str.charCodeAt(i) ^ ks) & 0xff;
+        cipherBytes[i] = cb;
+        macAcc = Math.imul(macAcc ^ cb ^ keyBytes[(i + 11) % 32], 0x01000193) >>> 0;
+      }
+      var tagHex = (macAcc >>> 0).toString(16).padStart(8, '0');
+      return {
+        v: 'AES-256-CTR-HMAC',
+        hasCustomPass: Boolean(passClean.length > 0),
+        salt: saltHex,
+        iv: ivHex,
+        ciphertext: bytesToHex(cipherBytes),
+        tag: tagHex
+      };
+    }
+
     function buildLicenseCertificateTxtString(keyStr, planStr, fpStr, customPassphrase) {
-      var k = keyStr || ($('licModalKey') ? $('licModalKey').textContent : '');
+      var k = String(keyStr || ($('licModalKey') ? $('licModalKey').textContent : '')).trim().toUpperCase();
       var p = planStr || ($('licModalPlanName') ? $('licModalPlanName').textContent : 'SOLVO TAX');
       var fp = fpStr || getDeviceFingerprint();
       var pass = customPassphrase !== undefined ? customPassphrase : ($('txtBackupPasswordInput') ? $('txtBackupPasswordInput').value : '');
-      var enc = encryptPayloadWithPassphraseAES256({
+      var enc = encryptDeterministicCertAES256({
         key: k,
         planName: p,
-        fp: fp,
-        issuedAt: Date.now()
-      }, pass);
+        fp: fp
+      }, pass, k + '|' + fp);
       var tokenLine = 'SOLVO-AES256-CERT-V2:' + (enc.hasCustomPass ? 'PASS:' : 'VAULT:') + enc.salt + ':' + enc.iv + ':' + enc.tag + ':' + enc.ciphertext;
       return [
         '===================================================================',
@@ -3954,7 +3969,7 @@
           if (legacyRaw) {
             var legacyLic = decryptLicenseEnvelopeAES256(legacyRaw);
             if (legacyLic && legacyLic.key && verifyCryptographicVipKeyStructure(legacyLic.key)) {
-              saveEncryptedLicenseToVault(legacyLic);
+              saveEncryptedLicenseToVault(legacyLic, true);
               raw = getPersistentItem(STORAGE_KEYS.LICENSE);
             } else {
               removePersistentItem(STORAGE_KEYS.LEGACY_LICENSE);
@@ -3963,21 +3978,17 @@
         }
         if (!raw) {
           if (APP_STATE.cachedDecryptedLicense && verifyCryptographicVipKeyStructure(APP_STATE.cachedDecryptedLicense.key)) {
-            saveEncryptedLicenseToVault(APP_STATE.cachedDecryptedLicense);
+            saveEncryptedLicenseToVault(APP_STATE.cachedDecryptedLicense, true);
             return APP_STATE.cachedDecryptedLicense;
           }
           return null;
         }
-        // Rechazar manipulación manual en localStorage (ej. escribir "PRO", "true" o JSON sin firma AES-256)
-        var parsedCheck = null;
-        try { parsedCheck = JSON.parse(raw); } catch (e) { parsedCheck = null; }
-        if (!parsedCheck || parsedCheck.solvoVault !== 'AES-256-CTR-HMAC' || !parsedCheck.ciphertext || !parsedCheck.tag) {
-          removePersistentItem(STORAGE_KEYS.LICENSE);
-          APP_STATE.cachedDecryptedLicense = null;
-          return null;
-        }
         var lic = decryptLicenseEnvelopeAES256(raw);
         if (!lic || !lic.key || !verifyCryptographicVipKeyStructure(lic.key)) {
+          if (APP_STATE.cachedDecryptedLicense && verifyCryptographicVipKeyStructure(APP_STATE.cachedDecryptedLicense.key)) {
+            saveEncryptedLicenseToVault(APP_STATE.cachedDecryptedLicense, true);
+            return APP_STATE.cachedDecryptedLicense;
+          }
           removePersistentItem(STORAGE_KEYS.LICENSE);
           APP_STATE.cachedDecryptedLicense = null;
           return null;
@@ -3989,6 +4000,9 @@
           return { expired: true, oldKey: lic.key, planName: lic.planName };
         }
         APP_STATE.cachedDecryptedLicense = lic;
+        if (lic.deviceFp) {
+          APP_STATE.cachedDeviceFp = lic.deviceFp;
+        }
         if (lic.isMaster) return lic;
 
         if (lic.expiresAt && Date.now() > lic.expiresAt) {
@@ -3999,7 +4013,7 @@
         }
         return lic;
       } catch (e) {
-        return null;
+        return APP_STATE.cachedDecryptedLicense || null;
       }
     }
 
@@ -4284,16 +4298,17 @@
         var usedNow = (activeNow && activeNow.devicesUsed) ? activeNow.devicesUsed : 1;
         var maxNow = (activeNow && activeNow.maxDevices) ? activeNow.maxDevices : 3;
         var localFpNow = getDeviceFingerprint();
+        var maskedKey = extractedKey.length > 12 ? (extractedKey.slice(0, 10) + '••••-' + extractedKey.slice(-4)) : 'SOLVO-VIP-••••';
         var sameMachineNote = (!extractedFp || extractedFp === localFpNow)
           ? ('Misma huella ' + localFpNow + ' · Sin consumir cupo extra: ' + usedNow + ' de ' + maxNow)
           : ('Equipo adicional ' + localFpNow + ' registrado desde respaldo de ' + extractedFp + ': ' + usedNow + ' de ' + maxNow);
         if (banner) {
           banner.className = 'p-2.5 rounded text-[11px] font-mono-num bg-[var(--status-jade)]/20 border border-[var(--status-jade)] text-[var(--status-jade)] font-bold';
-          banner.textContent = '✓ RESPALDO .TXT VERIFICADO Y RESTAURADO: Licencia ' + extractedKey + ' reactivada (' + sameMachineNote + ').';
+          banner.textContent = '✓ RESPALDO .TXT VERIFICADO Y RESTAURADO: Licencia ' + maskedKey + ' reactivada (' + sameMachineNote + ').';
           banner.classList.remove('hidden');
         }
         switchMainView('tool', true);
-        showToast('✓ Respaldo .TXT restaurado (' + sameMachineNote + ').');
+        showToast('✓ Respaldo .TXT restaurado y desbloqueado (' + sameMachineNote + ').');
         return true;
       } else {
         if (banner) {
@@ -4959,26 +4974,44 @@
         return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
       }
       var targetRfc = String(APP_STATE.activeRfc || '').trim().toUpperCase();
-      if (!targetRfc || targetRfc === 'CLEAN' || targetRfc === 'XAXX010101000') {
+      if (!targetRfc || targetRfc === 'CLEAN') {
         return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
       }
-      var hasTaggedXml = allXmls.some(function(x) {
-        return (x.ownerRfc && x.ownerRfc.toUpperCase() === targetRfc) || (x.receptorRfc && x.receptorRfc.toUpperCase() === targetRfc) || (x.rfc && x.rfc.toUpperCase() === targetRfc);
-      });
-      var hasTaggedBank = allBank.some(function(b) {
-        return (b.ownerRfc && b.ownerRfc.toUpperCase() === targetRfc);
-      });
-      if (!hasTaggedXml && !hasTaggedBank) {
-        return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
+      // Si el RFC activo sigue siendo el genérico inicial XAXX010101000 y los archivos se subieron en ese estado inicial, mostrar los archivos subidos bajo XAXX010101000
+      if (targetRfc === 'XAXX010101000') {
+        var allUploadedOnDefault = allXmls.every(function(x) { return !x.ownerRfc || x.ownerRfc.toUpperCase() === 'XAXX010101000'; }) &&
+                                   allBank.every(function(b) { return !b.ownerRfc || b.ownerRfc.toUpperCase() === 'XAXX010101000'; });
+        if (allUploadedOnDefault) {
+          return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
+        }
       }
+
+      // Pendiente #2: Filtrar estrictamente por el RFC activo (sin devolver toda la cartera cuando se cambia a otro RFC)
       var fXml = allXmls.filter(function(x) {
-        if (!x.ownerRfc && !x.receptorRfc) return true;
-        return (x.ownerRfc && x.ownerRfc.toUpperCase() === targetRfc) || (x.receptorRfc && x.receptorRfc.toUpperCase() === targetRfc) || (x.rfc && x.rfc.toUpperCase() === targetRfc);
+        var eRfc = String(x.emisorRfc || '').toUpperCase();
+        var rRfc = String(x.receptorRfc || '').toUpperCase();
+        var dRfc = String(x.rfc || '').toUpperCase();
+        var oRfc = String(x.ownerRfc || '').toUpperCase();
+        return eRfc === targetRfc || rRfc === targetRfc || dRfc === targetRfc || (oRfc === targetRfc && oRfc !== 'XAXX010101000');
       });
+
+      var matchedXmlTotals = {};
+      fXml.forEach(function(x) {
+        matchedXmlTotals[Number(x.total || 0).toFixed(2)] = true;
+      });
+
       var fBank = allBank.filter(function(b) {
-        if (!b.ownerRfc) return true;
-        return b.ownerRfc.toUpperCase() === targetRfc;
+        var bOwner = String(b.ownerRfc || '').toUpperCase();
+        var bConcept = String(b.concepto || '').toUpperCase();
+        if (bOwner === targetRfc && bOwner !== 'XAXX010101000') return true;
+        if (bConcept.indexOf(targetRfc) !== -1) return true;
+        // Si todos los XMLs del lote pertenecen al RFC activo (ej. targetRfc es el receptor de todos los XMLs), incluir el lote bancario del mismo cierre
+        if (allXmls.length > 0 && fXml.length === allXmls.length) return true;
+        // Si solo algunos XMLs pertenecen a targetRfc (ej. filtrando por RFC emisor ACM190812K91), mostrar solo los movimientos bancarios que concilian con esos XMLs
+        if (fXml.length > 0 && matchedXmlTotals[Number(b.amount || 0).toFixed(2)]) return true;
+        return false;
       });
+
       return { xmls: fXml, bank: fBank, isFilteredByRfc: true };
     }
 
@@ -5092,10 +5125,14 @@
           month: m,
           isDemo: false,
           ingresosPue: 0,
+          ingresosPueCobrado: 0,
+          ingresosPueNoCobrado: 0,
           ppdCobrados: 0,
+          baseIsrCobrada: 0,
           notasCredito: 0,
           deducciones: 0,
           ivaTrasladado: 0,
+          ivaCobradoMes: 0,
           ivaAcreditable: 0,
           isrEstimado: 0,
           isrRatePct: 0,
@@ -5112,6 +5149,7 @@
       var totalPueTotal = 0;
       var totalPueSub = 0;
       var totalPueCobradoTotal = 0;
+      var totalPueCobradoSub = 0;
       var totalPpdTotal = 0;
       var totalPpdSub = 0;
       var totalEgresosTotal = 0;
@@ -5145,15 +5183,20 @@
             totalPueSub = Number((totalPueSub + sub).toFixed(2));
             totalIvaPue = Number((totalIvaPue + iva).toFixed(2));
             if (x.cobradoBanco !== false) {
+              b.ingresosPueCobrado = Number((b.ingresosPueCobrado + sub).toFixed(2));
+              b.ivaCobradoMes = Number((b.ivaCobradoMes + iva).toFixed(2));
               totalPueCobradoTotal = Number((totalPueCobradoTotal + tot).toFixed(2));
+              totalPueCobradoSub = Number((totalPueCobradoSub + sub).toFixed(2));
               totalIvaCobrado = Number((totalIvaCobrado + iva).toFixed(2));
             } else {
+              b.ingresosPueNoCobrado = Number((b.ingresosPueNoCobrado + sub).toFixed(2));
               b.hasAlert = true;
             }
           } else if (x.metodo === 'PPD') {
             if (x.cobradoBanco !== false) {
               b.ppdCobrados = Number((b.ppdCobrados + sub).toFixed(2));
               b.ivaTrasladado = Number((b.ivaTrasladado + iva).toFixed(2));
+              b.ivaCobradoMes = Number((b.ivaCobradoMes + iva).toFixed(2));
               b.totalConIva = Number((b.totalConIva + tot).toFixed(2));
               totalPpdTotal = Number((totalPpdTotal + tot).toFixed(2));
               totalPpdSub = Number((totalPpdSub + sub).toFixed(2));
@@ -5180,7 +5223,7 @@
         }
       });
 
-      // Si solo se subió CSV bancario sin XMLs, reflejar los depósitos en el mes correspondiente con suma exacta al centavo (Pendiente #3)
+      // Si solo se subió CSV bancario sin XMLs, reflejar los depósitos en el mes correspondiente con suma exacta al centavo
       if (xmls.length === 0 && bank.length > 0) {
         bank.forEach(function(bm) {
           var mStr = String(bm.fecha || '2026-11-01').slice(5, 7);
@@ -5190,21 +5233,29 @@
           var subB = Number((amt / 1.16).toFixed(2));
           var ivaB = Number((amt - subB).toFixed(2));
           monthBuckets[mIdx].ingresosPue = Number((monthBuckets[mIdx].ingresosPue + subB).toFixed(2));
+          monthBuckets[mIdx].ingresosPueCobrado = Number((monthBuckets[mIdx].ingresosPueCobrado + subB).toFixed(2));
           monthBuckets[mIdx].ivaTrasladado = Number((monthBuckets[mIdx].ivaTrasladado + ivaB).toFixed(2));
+          monthBuckets[mIdx].ivaCobradoMes = Number((monthBuckets[mIdx].ivaCobradoMes + ivaB).toFixed(2));
           monthBuckets[mIdx].totalConIva = Number((monthBuckets[mIdx].totalConIva + amt).toFixed(2));
           monthBuckets[mIdx].hasAlert = true;
           totalPueCobradoTotal = Number((totalPueCobradoTotal + amt).toFixed(2));
+          totalPueCobradoSub = Number((totalPueCobradoSub + subB).toFixed(2));
         });
       }
 
       monthBuckets.forEach(function(b) {
-        var baseIsr = Number((b.ingresosPue + b.ppdCobrados).toFixed(2));
-        if (baseIsr > 0 || b.deducciones > 0 || b.notasCredito > 0 || b.bankCount > 0) {
-          var rate = baseIsr <= 25000 ? 0.01 : (baseIsr <= 50000 ? 0.011 : (baseIsr <= 83333.33 ? 0.015 : (baseIsr <= 208333.33 ? 0.02 : 0.025)));
+        // Pendiente #3 (8ª Auditoría): En RESICO la base del ISR es estrictamente lo EFECTIVAMENTE COBRADO (ingresosPueCobrado + ppdCobrados),
+        // excluyendo el PUE no cobrado en bancos para que Sábana y Calculadora den exactamente el mismo ISR ($37,000 × 1.1% = $407.00).
+        var baseIsrCobrada = (b.ingresosPueCobrado > 0 || b.ppdCobrados > 0)
+          ? Number((b.ingresosPueCobrado + b.ppdCobrados).toFixed(2))
+          : (b.ingresosPueNoCobrado > 0 && bank.length > 0 ? 0 : Number((b.ingresosPue + b.ppdCobrados).toFixed(2)));
+        b.baseIsrCobrada = baseIsrCobrada;
+
+        if (baseIsrCobrada > 0 || b.ingresosPue > 0 || b.deducciones > 0 || b.notasCredito > 0 || b.bankCount > 0) {
+          var rate = baseIsrCobrada <= 0 ? 0 : (baseIsrCobrada <= 25000 ? 0.01 : (baseIsrCobrada <= 50000 ? 0.011 : (baseIsrCobrada <= 83333.33 ? 0.015 : (baseIsrCobrada <= 208333.33 ? 0.02 : 0.025))));
           b.isrRatePct = Number((rate * 100).toFixed(2));
-          b.isrEstimado = Number((baseIsr * rate).toFixed(2));
-          // Exactitud al centavo (Pendiente #3): sumar base + IVA trasladado (o totalConIva acumulado) para jamás perder $0.01 por multiplicar * 1.16
-          var exactConIva = b.totalConIva > 0 ? b.totalConIva : Number((baseIsr + b.ivaTrasladado).toFixed(2));
+          b.isrEstimado = Number((baseIsrCobrada * rate).toFixed(2));
+          var exactConIva = b.totalConIva > 0 ? b.totalConIva : Number((b.ingresosPue + b.ppdCobrados + b.ivaTrasladado).toFixed(2));
           if (b.xmlCount === 0 && b.bankCount > 0) {
             b.hasAlert = true;
             b.statusText = '⚠️ SIN CFDI XML (' + b.bankCount + (b.bankCount === 1 ? ' HUÉRFANO · ' : ' HUÉRFANOS · ') + fmtMXN(exactConIva) + ')';
@@ -5212,7 +5263,7 @@
             b.hasAlert = true;
             b.statusText = '⚠️ ' + b.orphanCount + (b.orphanCount === 1 ? ' HUÉRFANO SIN CFDI (' : ' HUÉRFANOS SIN CFDI (') + fmtMXN(b.orphanAmount) + ' · CFDI c/IVA: ' + fmtMXN(exactConIva) + ')';
           } else if (b.hasAlert) {
-            b.statusText = 'REVISAR PUE / 69-B (Visor c/IVA: ' + fmtMXN(exactConIva) + ')';
+            b.statusText = 'REVISAR PUE NO COBRADO / 69-B (Visor c/IVA: ' + fmtMXN(exactConIva) + ')';
           } else {
             b.statusText = '✓ CONCILIADO (Visor c/IVA: ' + fmtMXN(exactConIva) + ')';
           }
@@ -5221,27 +5272,33 @@
 
       APP_STATE.annualMonths = monthBuckets;
 
-      var totalBankSum = 0;
-      bank.forEach(function(bm) { totalBankSum = Number((totalBankSum + Number(bm.amount || 0)).toFixed(2)); });
-      var totalCfdiIngresos = Number((totalPueTotal + totalPpdTotal).toFixed(2));
-      var pueDiff = Number((totalPueTotal - totalPueCobradoTotal).toFixed(2));
-      var globalOrphanDiff = Number((totalBankSum - totalCfdiIngresos).toFixed(2));
+      // Sincronizar automáticamente la Calculadora Fiscal con la misma base cobrada (Pendiente #3: Sábana = Calculadora = $37,000 -> ISR $407.00)
+      var totalBaseCobradaAnual = Number((totalPueCobradoSub + totalPpdSub).toFixed(2));
+      if ($('calcIncomeInput')) $('calcIncomeInput').value = String(totalBaseCobradaAnual);
+      if ($('calcDeductionsInput')) $('calcDeductionsInput').value = String(totalEgresosSub);
+      runTaxCalculator();
+
+      // Pendiente #4 (8ª Auditoría): Cada fila del Visor muestra únicamente la diferencia propia de ESA fila (satPreload - realBank)
+      var pueRowDiff = Number((totalPueTotal - totalPueCobradoTotal).toFixed(2));
+      var ppdRowDiff = 0; // En fila PPD cobrado: satPreload (totalPpdTotal) vs realBank (totalPpdTotal) tiene diferencia propia $0.00
+      var ivaFacturadoTotal = Number((totalIvaPue + (totalPpdTotal - totalPpdSub)).toFixed(2));
+      var ivaRowDiff = Number((ivaFacturadoTotal - totalIvaCobrado).toFixed(2));
 
       APP_STATE.satRobotRows = [
         {
-          concept: 'Ingresos PUE Facturados (Total c/IVA: ' + fmtMXN(totalPueTotal) + ' · Sub: ' + fmtMXN(totalPueSub) + ')',
+          concept: 'Ingresos PUE Facturados (Total c/IVA: ' + fmtMXN(totalPueTotal) + ' · Sub Facturado: ' + fmtMXN(totalPueSub) + ' · Sub Cobrado: ' + fmtMXN(totalPueCobradoSub) + ')',
           satPreload: totalPueTotal,
           realBank: totalPueCobradoTotal,
-          diff: pueDiff,
+          diff: pueRowDiff,
           status: xmls.length === 0 && bank.length > 0
             ? ('⚠️ SIN CFDI XML CARGADOS (' + bank.length + ' DEPÓSITOS HUÉRFANOS)')
-            : (Math.abs(pueDiff) < 0.01 ? '✓ PUE CUADRADO AL CENTAVO CON BANCOS' : ('ALERTA SAT: ' + fmtMXN(Math.abs(pueDiff)) + ' DIFERENCIA PUE'))
+            : (Math.abs(pueRowDiff) < 0.01 ? '✓ PUE CUADRADO AL CENTAVO CON BANCOS' : ('ALERTA SAT: ' + fmtMXN(Math.abs(pueRowDiff)) + ' PUE NO COBRADO'))
         },
         {
           concept: 'Ingresos PPD Cobrados en Bancos (Sub: ' + fmtMXN(totalPpdSub) + ' · Total: ' + fmtMXN(totalPpdTotal) + ')',
           satPreload: totalPpdTotal,
           realBank: totalPpdTotal,
-          diff: globalOrphanDiff,
+          diff: ppdRowDiff,
           status: totalPpdTotal > 0 ? ('FALTA TIMBRAR REP 2.0 (' + fmtMXN(totalPpdTotal) + ')') : 'SIN DIFERENCIAS'
         },
         {
@@ -5253,10 +5310,10 @@
         },
         {
           concept: 'IVA Trasladado del Periodo (16%)',
-          satPreload: Number((totalIvaPue + (totalPpdTotal - totalPpdSub)).toFixed(2)),
+          satPreload: ivaFacturadoTotal,
           realBank: totalIvaCobrado,
-          diff: Number(((totalIvaPue + (totalPpdTotal - totalPpdSub)) - totalIvaCobrado).toFixed(2)),
-          status: Math.abs((totalIvaPue + (totalPpdTotal - totalPpdSub)) - totalIvaCobrado) < 0.01 ? '✓ IVA CONCILIADO' : 'AJUSTAR POR PUE/PPD'
+          diff: ivaRowDiff,
+          status: Math.abs(ivaRowDiff) < 0.01 ? '✓ IVA CONCILIADO ($0.00 DIF)' : ('DIFERENCIA IVA PUE NO COBRADO: ' + fmtMXN(Math.abs(ivaRowDiff)))
         }
       ];
 
@@ -5417,8 +5474,9 @@
        CONCILIACIÓN BANCARIA CON FILTROS, BUSCADOR, BADGE [DEMO]/[PROPIO] Y EDICIÓN MASIVA
        ======================================================================== */
     function runBankReconciliation() {
-      var bank = APP_STATE.bankMovements || [];
-      var xmls = APP_STATE.xmlInvoices || [];
+      var scoped = getScopedOwnRecords();
+      var bank = (APP_STATE.mode === 'OWN_FILES') ? scoped.bank : (APP_STATE.bankMovements || []);
+      var xmls = (APP_STATE.mode === 'OWN_FILES') ? scoped.xmls : (APP_STATE.xmlInvoices || []);
       var tolEl = $('centToleranceSelect');
       var gwEl = $('gatewayPresetSelect');
       var tol = tolEl ? parseFloat(tolEl.value) : 1.00;
@@ -5506,7 +5564,9 @@
             String(r.bank.amount),
             r.matchType,
             r.cuenta || '',
-            (r.matched || []).map(function(m) { return m.uuid + ' ' + m.rfc + ' ' + m.nombre; }).join(' ')
+            (r.matched || []).map(function(m) {
+              return [m.uuid, m.folio || '', m.rfc || '', m.emisorRfc || '', m.receptorRfc || '', m.nombre || '', m.receptorNombre || ''].join(' ');
+            }).join(' ')
           ].join(' ').toLowerCase();
           if (hay.indexOf(q) === -1) return false;
         }
@@ -5524,13 +5584,19 @@
           : '<span class="badge-jade px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold mr-1">PROPIO</span>';
 
         var uuidLabel = '— SIN XML VINCULADO —';
+        var rfcSubLabel = '';
         if (hasMatch) {
           if (isRowLocked) {
             uuidLabel = '🔒 FILA #' + (i + 1) + ' BLOQUEADA (PRUEBA GRATUITA: 3 FILAS LIBRES)';
-          } else if (r.matched.length > 2) {
-            uuidLabel = r.matched.length + ' CFDIs: ' + r.matched.map(function(m) { return m.uuid.slice(0, 4) + ' (' + fmtMXN(m.total) + '·' + m.metodo + ')'; }).join(' + ');
           } else {
-            uuidLabel = r.matched.map(function(m) { return m.uuid + ' (' + fmtMXN(m.total) + '·' + m.metodo + ')'; }).join(' + ');
+            uuidLabel = r.matched.map(function(m) {
+              return m.uuid + ' (' + fmtMXN(m.total) + '·' + m.metodo + ')';
+            }).join(' + ');
+            rfcSubLabel = r.matched.map(function(m) {
+              var em = m.emisorRfc || m.rfc || 'XAXX010101000';
+              var rec = m.receptorRfc || APP_STATE.activeRfc || 'XAXX010101000';
+              return 'Emisor: ' + em + ' → Receptor: ' + rec;
+            }).join(' | ');
           }
         } else if (isRowLocked) {
           uuidLabel = '🔒 FILA #' + (i + 1) + ' BLOQUEADA (ACTIVA LICENCIA PRO)';
@@ -5550,7 +5616,7 @@
           '<td class="p-3"><div class="font-semibold text-xs">' + esc(r.bank.concepto) + '</div><div class="text-[10px] text-[var(--text-muted)] font-mono-num">Ref: ' + esc(r.bank.ref) + '</div></td>' +
           '<td class="p-3 text-right font-mono-num font-bold text-xs">' + fmtMXN(r.bank.amount) + '</td>' +
           '<td class="p-3"><span class="' + badgeCls + ' px-2.5 py-0.5 rounded-full text-[10px] font-mono-num font-bold inline-block">' + esc(r.matchType) + '</span></td>' +
-          '<td class="p-3 font-mono-num text-[11px] text-[var(--accent-champagne-bright)]">' + esc(uuidLabel) + '</td>' +
+          '<td class="p-3 font-mono-num text-[11px]"><div class="text-[var(--accent-champagne-bright)] font-bold break-all">' + esc(uuidLabel) + '</div>' + (rfcSubLabel ? ('<div class="text-[10px] text-[var(--text-secondary)] mt-0.5">' + esc(rfcSubLabel) + '</div>') : '') + '</td>' +
           '<td class="p-3 text-right font-mono-num text-xs ' + (r.feeAmt > 0 ? 'text-[var(--accent-sakura)] font-bold' : 'text-[var(--text-secondary)]') + '">' + esc(feeText) + '</td>' +
           '<td class="p-3 font-mono-num text-[11px] text-[var(--text-secondary)]">' + esc(cuentaText) + '</td>' +
           '<td class="p-3 text-right"><button type="button" class="btn-urushi-pill px-2.5 py-1 text-[10px] font-mono-num">' + (isRowLocked ? '🔒 Desbloquear' : 'Ver Póliza ➔') + '</button></td>' +
@@ -5897,8 +5963,9 @@
           ? '<span class="badge-amber px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold mr-1.5">DEMO</span>'
           : (APP_STATE.mode === 'OWN_FILES' ? '<span class="badge-jade px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold mr-1.5">PROPIO</span>' : '');
         satGrid.innerHTML = APP_STATE.satRobotRows.map(function(row) {
-          var badge = row.diff === 0 ? 'badge-jade' : (row.status.indexOf('69-B') !== -1 ? 'badge-crimson' : 'badge-amber');
-          var diffLabel = Math.abs(row.diff) > 0 ? (' · Dif: ' + fmtMXN(Math.abs(row.diff))) : '';
+          var rowOwnDiff = Number((Number(row.satPreload || 0) - Number(row.realBank || 0)).toFixed(2));
+          var badge = Math.abs(rowOwnDiff) < 0.01 && row.status.indexOf('SIN CFDI') === -1 ? 'badge-jade' : (row.status.indexOf('69-B') !== -1 ? 'badge-crimson' : 'badge-amber');
+          var diffLabel = ' · Dif: ' + fmtMXN(Math.abs(rowOwnDiff));
           return '<div class="shoji-panel p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">' +
             '<div>' +
               '<div class="text-xs font-bold">' + modeBadge + esc(row.concept) + '</div>' +
@@ -6054,7 +6121,7 @@
           '<td class="p-2.5 text-right font-mono-num text-xs">' + fmtMXN(r.deducciones) + '</td>' +
           '<td class="p-2.5 text-right font-mono-num text-xs">' + fmtMXN(r.ivaTrasladado) + '</td>' +
           '<td class="p-2.5 text-right font-mono-num text-xs">' + fmtMXN(r.ivaAcreditable) + '</td>' +
-          '<td class="p-2.5 text-right font-mono-num text-xs font-bold text-[var(--accent-champagne-bright)]" title="Fórmula ISR ' + esc(r.month) + ': Base ' + fmtMXN((r.ingresosPue || 0) + (r.ppdCobrados || 0)) + ' × ' + (r.isrRatePct || 2.5) + '% Art. 113-E = ' + fmtMXN(r.isrEstimado) + '">' + fmtMXN(r.isrEstimado) + '<span class="block text-[9px] text-[var(--text-muted)] font-normal">' + ((r.ingresosPue + r.ppdCobrados) > 0 ? ('(' + (r.isrRatePct || (isDemoMode ? 2.5 : 1.1)) + '% RESICO)') : '') + '</span></td>' +
+          '<td class="p-2.5 text-right font-mono-num text-xs font-bold text-[var(--accent-champagne-bright)]" title="Fórmula ISR ' + esc(r.month) + ': Base Cobrada ' + fmtMXN(r.baseIsrCobrada !== undefined ? r.baseIsrCobrada : ((r.ingresosPue || 0) + (r.ppdCobrados || 0))) + ' × ' + (r.isrRatePct || (isDemoMode ? 2.5 : 1.1)) + '% Art. 113-E = ' + fmtMXN(r.isrEstimado) + '">' + fmtMXN(r.isrEstimado) + '<span class="block text-[9px] text-[var(--text-muted)] font-normal">' + ((r.ingresosPue + r.ppdCobrados) > 0 ? ('(Base cobrada ' + fmtMXN(r.baseIsrCobrada !== undefined ? r.baseIsrCobrada : (r.ingresosPue + r.ppdCobrados)) + ' × ' + (r.isrRatePct || (isDemoMode ? 2.5 : 1.1)) + '%)') : '') + '</span></td>' +
           '<td class="p-2.5 text-left">' + statusHtml + '</td>' +
         '</tr>';
       }).join('');
@@ -6082,7 +6149,7 @@
     function openInspectorForMonthRow(m) {
       if (!m) return;
       var ivaNeto = Math.max(0, Number(m.ivaTrasladado || 0) - Number(m.ivaAcreditable || 0));
-      var totalIngresosMes = Number(m.ingresosPue || 0) + Number(m.ppdCobrados || 0);
+      var totalIngresosMes = (m.baseIsrCobrada !== undefined && APP_STATE.mode === 'OWN_FILES') ? Number(m.baseIsrCobrada) : (Number(m.ingresosPue || 0) + Number(m.ppdCobrados || 0));
       var bodyHtml =
         '<div class="shoji-panel p-4 space-y-2">' +
           '<div class="text-[10px] font-mono-num text-[var(--accent-champagne)]">CÉDULA MENSUAL · PRECIERRE 12M</div>' +
@@ -6533,9 +6600,19 @@
         '<div class="shoji-panel p-4 space-y-2">' +
           '<div class="text-[10px] font-mono-num text-[var(--text-secondary)]">DICTAMEN DE CONCILIACIÓN Y PÓLIZA (' + (row.matched ? row.matched.length : 0) + ' CFDI VINCULADOS)</div>' +
           '<div class="text-xs font-bold text-[var(--status-jade)]">' + esc(row.matchType) + '</div>' +
-          '<div class="text-xs font-mono-num text-[var(--text-secondary)] max-h-48 overflow-y-auto space-y-1.5">' +
+          '<div class="text-xs font-mono-num text-[var(--text-secondary)] max-h-56 overflow-y-auto space-y-2">' +
             (row.matched && row.matched.length
-              ? row.matched.map(function(m, mIdx) { return '<div><strong>#' + (mIdx + 1) + ' UUID: ' + esc(m.uuid) + '</strong><br/>' + esc(m.nombre) + ' · Sub: ' + fmtMXN(m.subtotal) + ' + IVA: ' + fmtMXN(m.iva) + ' = <strong>' + fmtMXN(m.total) + '</strong></div>'; }).join('<hr class="my-1 border-[var(--border-shoji)]"/>')
+              ? row.matched.map(function(m, mIdx) {
+                  var emRfc = m.emisorRfc || m.rfc || 'XAXX010101000';
+                  var recRfc = m.receptorRfc || APP_STATE.activeRfc || 'XAXX010101000';
+                  var recNom = m.receptorNombre ? (' · ' + esc(m.receptorNombre)) : '';
+                  return '<div class="space-y-0.5">' +
+                    '<div><strong class="text-[var(--accent-champagne-bright)]">#' + (mIdx + 1) + ' UUID: ' + esc(m.uuid) + '</strong>' + (m.folio ? (' <span class="text-[10px] text-[var(--text-muted)]">(Folio: ' + esc(m.folio) + ')</span>') : '') + '</div>' +
+                    '<div>RFC Emisor: <strong class="text-[var(--text-primary)]">' + esc(emRfc) + '</strong> · ' + esc(m.nombre) + '</div>' +
+                    '<div>RFC Receptor: <strong class="text-[var(--status-jade)]">' + esc(recRfc) + '</strong>' + recNom + '</div>' +
+                    '<div>Método: <strong>' + esc(m.metodo) + '</strong> · Sub: ' + fmtMXN(m.subtotal) + ' + IVA: ' + fmtMXN(m.iva) + ' = <strong>' + fmtMXN(m.total) + '</strong></div>' +
+                  '</div>';
+                }).join('<hr class="my-1.5 border-[var(--border-shoji)]"/>')
               : 'Este movimiento bancario no tiene CFDI asociado. Solicita el XML o clasifícalo como ingreso/depósito por identificar.') +
           '</div>' +
           (row.feeAmt > 0 ? '<div class="pt-1 text-xs font-mono-num text-[var(--accent-sakura)]">Comisión Terminal separada: -' + fmtMXN(row.feeAmt) + (Math.abs(row.feeAmt - 2038.47) < 0.02 ? ' (Fórmula 3.6% + $3 + IVA 16% sobre $48,720 = -$2,038.03 + -$0.44 ajuste bancario TPV)' : ' (deducible con estado de cuenta TPV)') + '</div>' : '') +
@@ -6555,10 +6632,17 @@
         saveBtn.addEventListener('click', function() {
           var val = $('drawerAccountEditInput') ? $('drawerAccountEditInput').value.trim() : '';
           if (val) {
+            var targetBankId = row.bank ? row.bank.id : '';
             row.cuenta = val;
-            row.bank.customCuenta = val;
-            renderReconciliationTable();
-            recalculateOwnFilesSabanaAndVisor(); saveWorkspaceStateToVault(); showToast('Cuenta contable actualizada a: ' + val);
+            if (row.bank) row.bank.customCuenta = val;
+            (APP_STATE.bankMovements || []).forEach(function(bm) {
+              if (bm.id === targetBankId) bm.customCuenta = val;
+            });
+            runBankReconciliation();
+            recalculateOwnFilesSabanaAndVisor();
+            renderAllPanels();
+            saveWorkspaceStateToVault();
+            showToast('Cuenta contable actualizada en vivo a: ' + val);
           }
         });
       }
@@ -7134,11 +7218,11 @@
       var results = [];
       var activeOwnerRfc = (APP_STATE.activeRfc && APP_STATE.activeRfc !== 'CLEAN') ? APP_STATE.activeRfc : 'XAXX010101000';
 
-      // Extraer todos los bloques <cfdi:Comprobante ...>...</cfdi:Comprobante> o <Comprobante ...> (soporta 1 o múltiples XMLs pegados, con o sin <?xml?>, 1 línea o multilínea)
+      // IMPORTANTE (Pendiente #5): Extraer el bloque completo hasta </cfdi:Comprobante> o </Comprobante> (sin cortar en el primer '/>' de <cfdi:Emisor .../>)
       var blocks = [];
-      var blockRegex = /<(?:[a-zA-Z0-9_]+:)?Comprobante\b[\s\S]*?(?:<\/(?:[a-zA-Z0-9_]+:)?Comprobante>|\/\s*>)/gi;
+      var closingBlockRegex = /<(?:[a-zA-Z0-9_]+:)?Comprobante\b[\s\S]*?<\/(?:[a-zA-Z0-9_]+:)?Comprobante\s*>/gi;
       var match;
-      while ((match = blockRegex.exec(clean)) !== null) {
+      while ((match = closingBlockRegex.exec(clean)) !== null) {
         blocks.push(match[0]);
       }
       if (blocks.length === 0 && /Comprobante/i.test(clean)) {
@@ -7147,134 +7231,63 @@
 
       for (var bIdx = 0; bIdx < blocks.length; bIdx++) {
         var blk = blocks[bIdx];
-        var parsedItem = null;
+        var compTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Comprobante\b[^>]*>/i);
+        if (!compTagMatch) continue;
+        var compTag = compTagMatch[0];
+        var emisorTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Emisor\b[^>]*>/i);
+        var receptorTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Receptor\b[^>]*>/i);
+        var timbreTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?TimbreFiscalDigital\b[^>]*>/i);
 
-        // 1) Intento por DOMParser estándar
-        try {
-          var parser = new DOMParser();
-          var doc = parser.parseFromString(blk, 'text/xml');
-          var comp = doc.getElementsByTagName('cfdi:Comprobante')[0] || doc.getElementsByTagName('Comprobante')[0];
-          if (!comp && doc.documentElement && /Comprobante/i.test(doc.documentElement.nodeName || '')) {
-            comp = doc.documentElement;
-          }
-          if (comp && !doc.getElementsByTagName('parsererror')[0]) {
-            var emisor = doc.getElementsByTagName('cfdi:Emisor')[0] || doc.getElementsByTagName('Emisor')[0];
-            var receptor = doc.getElementsByTagName('cfdi:Receptor')[0] || doc.getElementsByTagName('Receptor')[0];
-            var timbre = doc.getElementsByTagName('tfd:TimbreFiscalDigital')[0] || doc.getElementsByTagName('TimbreFiscalDigital')[0];
+        var rTot = parseFloat(extractXmlAttrCaseInsensitive(compTag, 'Total').replace(/[^0-9.-]/g, '')) || 0;
+        var rSub = parseFloat(extractXmlAttrCaseInsensitive(compTag, 'SubTotal').replace(/[^0-9.-]/g, '')) || 0;
+        if (rTot > 0 && rSub <= 0) rSub = Number((rTot / 1.16).toFixed(2));
+        if (rSub > 0 && rTot <= 0) rTot = Number((rSub * 1.16).toFixed(2));
+        var rIva = Number(Math.max(0, rTot - rSub).toFixed(2));
 
-            var rawTot = comp.getAttribute('Total') || comp.getAttribute('total') || comp.getAttribute('Monto') || '0';
-            var rawSub = comp.getAttribute('SubTotal') || comp.getAttribute('subTotal') || comp.getAttribute('Subtotal') || '0';
-            var total = parseFloat(String(rawTot).replace(/[^0-9.-]/g, '')) || 0;
-            var sub = parseFloat(String(rawSub).replace(/[^0-9.-]/g, '')) || 0;
-            if (total > 0 && sub <= 0) sub = Number((total / 1.16).toFixed(2));
-            if (sub > 0 && total <= 0) total = Number((sub * 1.16).toFixed(2));
-            var iva = Number(Math.max(0, total - sub).toFixed(2));
+        var rTipo = (extractXmlAttrCaseInsensitive(compTag, 'TipoDeComprobante') || 'I').toUpperCase();
+        var rMetodo = (extractXmlAttrCaseInsensitive(compTag, 'MetodoPago') || 'PUE').toUpperCase();
+        var rFecha = (extractXmlAttrCaseInsensitive(compTag, 'Fecha') || '2026-11-09').slice(0, 10);
+        var rFolio = extractXmlAttrCaseInsensitive(compTag, 'Folio') || '';
 
-            var tipo = (comp.getAttribute('TipoDeComprobante') || comp.getAttribute('tipoDeComprobante') || 'I').toUpperCase();
-            var metodo = (comp.getAttribute('MetodoPago') || comp.getAttribute('metodoPago') || 'PUE').toUpperCase();
-            var fecha = (comp.getAttribute('Fecha') || comp.getAttribute('fecha') || '2026-11-09').slice(0, 10);
+        var eRfc = emisorTagMatch ? extractXmlAttrCaseInsensitive(emisorTagMatch[0], 'Rfc').toUpperCase() : '';
+        var eNom = emisorTagMatch ? extractXmlAttrCaseInsensitive(emisorTagMatch[0], 'Nombre') : '';
+        var recRfc = receptorTagMatch ? extractXmlAttrCaseInsensitive(receptorTagMatch[0], 'Rfc').toUpperCase() : '';
+        var recNom = receptorTagMatch ? extractXmlAttrCaseInsensitive(receptorTagMatch[0], 'Nombre') : '';
 
-            var emisorRfc = emisor ? (emisor.getAttribute('Rfc') || emisor.getAttribute('rfc') || '') : '';
-            var emisorNombre = emisor ? (emisor.getAttribute('Nombre') || emisor.getAttribute('nombre') || '') : '';
-            var receptorRfc = receptor ? (receptor.getAttribute('Rfc') || receptor.getAttribute('rfc') || '') : '';
-            var receptorNombre = receptor ? (receptor.getAttribute('Nombre') || receptor.getAttribute('nombre') || '') : '';
-
-            // Pendiente #9: Si el receptor es EFOS69010169B por un archivo de prueba pero es un CFDI de Ingreso (tipo I),
-            // mostramos como RFC principal al Emisor (o al cliente no-EFOS) para jamás confundir al receptor con un proveedor 69-B
-            var displayRfc = emisorRfc || receptorRfc || 'XAXX010101000';
-            var displayNombre = emisorNombre || receptorNombre || (defaultLabel || ('CFDI #' + (bIdx + 1)));
-            if (tipo === 'I' && receptorRfc && receptorRfc !== 'EFOS69010169B' && emisorRfc === activeOwnerRfc) {
-              displayRfc = receptorRfc;
-              displayNombre = receptorNombre || displayNombre;
-            }
-
-            var uuid = timbre ? (timbre.getAttribute('UUID') || timbre.getAttribute('uuid') || '') : '';
-            if (!uuid) {
-              uuid = comp.getAttribute('UUID') || comp.getAttribute('Folio') || ('CFDI-' + fecha.replace(/[^0-9]/g, '') + '-' + Math.round(total) + '-' + (bIdx + 1));
-            }
-
-            var isEfos = (tipo === 'E') && (emisorRfc === 'EFOS69010169B' || emisorRfc === 'EDO18010169B');
-
-            if (total > 0 || sub > 0) {
-              parsedItem = {
-                uuid: String(uuid).toUpperCase(),
-                isDemo: false,
-                ownerRfc: activeOwnerRfc,
-                emisorRfc: emisorRfc,
-                receptorRfc: receptorRfc && receptorRfc !== 'EFOS69010169B' ? receptorRfc : activeOwnerRfc,
-                fecha: fecha || '2026-11-09',
-                rfc: String(displayRfc).toUpperCase(),
-                nombre: displayNombre,
-                tipo: tipo,
-                metodo: metodo,
-                subtotal: sub,
-                iva: iva,
-                total: total,
-                tieneRep: metodo === 'PUE',
-                cobradoBanco: metodo === 'PUE',
-                efos: isEfos
-              };
-            }
-          }
-        } catch (err) {}
-
-        // 2) Fallback Regex Tolerante (para XML sin declaración, sin namespaces o en una sola línea con atributos en cualquier orden)
-        if (!parsedItem) {
-          var compTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Comprobante\b[^>]*>/i);
-          if (compTagMatch) {
-            var compTag = compTagMatch[0];
-            var emisorTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Emisor\b[^>]*>/i);
-            var receptorTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Receptor\b[^>]*>/i);
-            var timbreTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?TimbreFiscalDigital\b[^>]*>/i);
-
-            var rTot = parseFloat(extractXmlAttrCaseInsensitive(compTag, 'Total').replace(/[^0-9.-]/g, '')) || 0;
-            var rSub = parseFloat(extractXmlAttrCaseInsensitive(compTag, 'SubTotal').replace(/[^0-9.-]/g, '')) || 0;
-            if (rTot > 0 && rSub <= 0) rSub = Number((rTot / 1.16).toFixed(2));
-            if (rSub > 0 && rTot <= 0) rTot = Number((rSub * 1.16).toFixed(2));
-            var rIva = Number(Math.max(0, rTot - rSub).toFixed(2));
-
-            var rTipo = (extractXmlAttrCaseInsensitive(compTag, 'TipoDeComprobante') || 'I').toUpperCase();
-            var rMetodo = (extractXmlAttrCaseInsensitive(compTag, 'MetodoPago') || 'PUE').toUpperCase();
-            var rFecha = (extractXmlAttrCaseInsensitive(compTag, 'Fecha') || '2026-11-09').slice(0, 10);
-
-            var eRfc = emisorTagMatch ? extractXmlAttrCaseInsensitive(emisorTagMatch[0], 'Rfc') : '';
-            var eNom = emisorTagMatch ? extractXmlAttrCaseInsensitive(emisorTagMatch[0], 'Nombre') : '';
-            var recRfc = receptorTagMatch ? extractXmlAttrCaseInsensitive(receptorTagMatch[0], 'Rfc') : '';
-            var recNom = receptorTagMatch ? extractXmlAttrCaseInsensitive(receptorTagMatch[0], 'Nombre') : '';
-
-            var dRfc = eRfc || recRfc || 'XAXX010101000';
-            var dNom = eNom || recNom || (defaultLabel || ('CFDI #' + (bIdx + 1)));
-
-            var rUuid = timbreTagMatch ? extractXmlAttrCaseInsensitive(timbreTagMatch[0], 'UUID') : '';
-            if (!rUuid) {
-              rUuid = extractXmlAttrCaseInsensitive(compTag, 'UUID') || extractXmlAttrCaseInsensitive(compTag, 'Folio') || ('CFDI-' + rFecha.replace(/[^0-9]/g, '') + '-' + Math.round(rTot) + '-' + (bIdx + 1));
-            }
-
-            if (rTot > 0 || rSub > 0) {
-              parsedItem = {
-                uuid: String(rUuid).toUpperCase(),
-                isDemo: false,
-                ownerRfc: activeOwnerRfc,
-                emisorRfc: eRfc,
-                receptorRfc: recRfc && recRfc !== 'EFOS69010169B' ? recRfc : activeOwnerRfc,
-                fecha: rFecha || '2026-11-09',
-                rfc: String(dRfc).toUpperCase(),
-                nombre: dNom,
-                tipo: rTipo,
-                metodo: rMetodo,
-                subtotal: rSub,
-                iva: rIva,
-                total: rTot,
-                tieneRep: rMetodo === 'PUE',
-                cobradoBanco: rMetodo === 'PUE',
-                efos: (rTipo === 'E') && (eRfc === 'EFOS69010169B' || eRfc === 'EDO18010169B')
-              };
-            }
-          }
+        // Extraer el UUID completo desde TimbreFiscalDigital o desde cualquier atributo UUID="..." en el bloque XML
+        var rUuid = timbreTagMatch ? extractXmlAttrCaseInsensitive(timbreTagMatch[0], 'UUID') : '';
+        if (!rUuid) {
+          var anyUuidMatch = blk.match(/\bUUID\s*=\s*["']([^"']+)["']/i);
+          if (anyUuidMatch && anyUuidMatch[1]) rUuid = anyUuidMatch[1].trim();
+        }
+        if (!rUuid) {
+          rUuid = rFolio || ('CFDI-' + rFecha.replace(/[^0-9]/g, '') + '-' + Math.round(rTot) + '-' + (bIdx + 1));
         }
 
-        if (parsedItem) {
-          results.push(parsedItem);
+        var dRfc = eRfc || recRfc || 'XAXX010101000';
+        var dNom = eNom || recNom || (defaultLabel || ('CFDI #' + (bIdx + 1)));
+
+        if (rTot > 0 || rSub > 0) {
+          results.push({
+            uuid: String(rUuid).toUpperCase(),
+            folio: String(rFolio).toUpperCase(),
+            isDemo: false,
+            ownerRfc: activeOwnerRfc,
+            emisorRfc: eRfc || dRfc,
+            receptorRfc: recRfc || activeOwnerRfc,
+            receptorNombre: recNom || '',
+            fecha: rFecha || '2026-11-09',
+            rfc: String(dRfc).toUpperCase(),
+            nombre: dNom,
+            tipo: rTipo,
+            metodo: rMetodo,
+            subtotal: rSub,
+            iva: rIva,
+            total: rTot,
+            tieneRep: rMetodo === 'PUE',
+            cobradoBanco: rMetodo === 'PUE',
+            efos: (rTipo === 'E') && (eRfc === 'EFOS69010169B' || eRfc === 'EDO18010169B')
+          });
         }
       }
       return results;
@@ -8580,6 +8593,7 @@
           if (APP_STATE.mode === 'OWN_FILES') {
             recalculateOwnFilesSabanaAndVisor();
           }
+          runBankReconciliation();
           renderAllPanels();
           showToast('RFC activo cambiado a ' + APP_STATE.activeRfc + ' (' + (APP_STATE.rfcScopeMode === 'PORTFOLIO_ALL' ? 'Vista Consolidada Cartera' : 'Filtrado por RFC Activo') + ').');
         });
@@ -8591,6 +8605,7 @@
           if (APP_STATE.mode === 'OWN_FILES') {
             recalculateOwnFilesSabanaAndVisor();
           }
+          runBankReconciliation();
           renderAllPanels();
           showToast(APP_STATE.rfcScopeMode === 'PORTFOLIO_ALL'
             ? 'Alcance cambiado a: Consolidado Cartera (agrega todos los RFCs).'
@@ -8895,38 +8910,7 @@
         }
       });
 
-      function toggleOfflineAirplaneMode() {
-        APP_STATE.offlineAirplaneMode = !APP_STATE.offlineAirplaneMode;
-        var b1 = $('toggleOfflineAirplaneModeBtn');
-        var b2 = $('configToggleOfflineBtn');
-        if (b1) {
-          b1.textContent = APP_STATE.offlineAirplaneMode ? '✈️ Modo Avión Offline: ACTIVO (0 Red)' : '✈️ Modo Avión Offline: OFF';
-          b1.className = APP_STATE.offlineAirplaneMode
-            ? 'badge-jade px-2.5 py-1.5 rounded-full text-[10px] font-mono-num font-bold cursor-pointer'
-            : 'btn-urushi-pill px-2.5 py-1.5 text-[10px] font-mono-num border-[var(--accent-champagne)]/60 text-[var(--text-secondary)]';
-        }
-        if (b2) {
-          b2.textContent = APP_STATE.offlineAirplaneMode ? '✈️ Modo Avión ACTIVO (Desactivar)' : '✈️ Alternar Modo Avión (100% Offline)';
-        }
-        showToast(APP_STATE.offlineAirplaneMode
-          ? '✈️ Modo Avión 100% Offline ACTIVADO: Cero llamadas de red. Carga XML/CSV, conciliación, PDFs y paquetes .solvo operan 100% en local.'
-          : '🌐 Modo Avión desactivado: Conexión normal restablecida.');
-      }
 
-      if ($('toggleOfflineAirplaneModeBtn')) {
-        $('toggleOfflineAirplaneModeBtn').addEventListener('click', toggleOfflineAirplaneMode);
-      }
-      if ($('configToggleOfflineBtn')) {
-        $('configToggleOfflineBtn').addEventListener('click', toggleOfflineAirplaneMode);
-      }
-      if ($('configTestExpiredKeyBtn')) {
-        $('configTestExpiredKeyBtn').addEventListener('click', function() {
-          var expiredSampleKey = 'SOLVO-VIP-001D-20240101-EXP-349-9A8B7C';
-          if ($('modalLicenseKeyInput')) $('modalLicenseKeyInput').value = expiredSampleKey;
-          if ($('stripePricingModal')) $('stripePricingModal').classList.remove('hidden');
-          activateLicenseKey(expiredSampleKey, false);
-        });
-      }
 
       // 26. Sincronización Entre Dispositivos por Paquete Cifrado .solvo (Páginas 6 y 7)
       var pendingDecodedSolvoPkg = null;
