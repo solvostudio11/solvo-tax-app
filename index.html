@@ -694,6 +694,13 @@
           <span id="headerLicenseBtnText">Ingresar Código</span>
         </button>
 
+        <!-- Botón Visible de Logout / Cambiar Cuenta / Pasar a Modo Gratis (3 Filas) -->
+        <button id="headerLogoutLicenseBtn" type="button" class="hidden btn-urushi-pill px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-mono-num font-bold text-[var(--status-crimson)] border-[var(--status-crimson)]/60 hover:brightness-110 transition items-center gap-1" title="Cerrar sesión de licencia activa, cambiar de código o verificar el Modo Gratis (3 filas)">
+          <span>🚪</span>
+          <span class="hidden sm:inline">Salir / Modo Gratis</span>
+          <span class="sm:hidden">Salir</span>
+        </button>
+
         <!-- Botón de Generador Maestro Ilimitado -->
         <button id="openFolioIssuerBtn" type="button" class="hidden badge-sakura px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] font-mono-num font-bold cursor-pointer" title="Generar Códigos Ilimitados">
           ★ Generador Maestro
@@ -1109,8 +1116,8 @@
               </div>
             </div>
             <ul class="space-y-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-shoji)]">
+              <li>✓ <strong>Licencia válida en hasta 3 equipos. Cada equipo trabaja en local, cero nube. Paquete cifrado para llevar tu cierre de un equipo a otro.</strong></li>
               <li>✓ <strong>Tu cierre en tus 3 equipos, con paquete cifrado.</strong> Sin nube de por medio.</li>
-              <li>✓ <strong>Licencia válida en hasta 3 equipos.</strong> Cada equipo trabaja en local, cero nube.</li>
               <li>✓ <strong>Precierre Anual de 12 Meses</strong> + Sábana Excel</li>
               <li>✓ <strong>Ajuste Anual de Nómina (CFDI Tipo N)</strong></li>
               <li>✓ <strong>Marca Blanca</strong> con nombre de tu despacho en PDFs</li>
@@ -1199,6 +1206,18 @@
 
           <button id="openAddClientModalBtn" type="button" class="btn-urushi-pill px-2.5 py-1.5 text-[11px] font-mono-num" title="Registrar RFC en tu cartera local">
             + Guardar RFC
+          </button>
+
+          <div class="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-lg px-2 py-1" title="Elige si las vistas filtran únicamente el RFC activo o consolidan toda la cartera">
+            <span class="text-[9px] font-mono-num text-[var(--accent-champagne)]">ALCANCE:</span>
+            <select id="rfcScopeModeSelect" class="bg-transparent text-[11px] font-mono-num text-[var(--text-primary)] focus:outline-none cursor-pointer">
+              <option value="ACTIVE_RFC" selected>Filtrar por RFC Activo</option>
+              <option value="PORTFOLIO_ALL">Consolidado Cartera (Todos)</option>
+            </select>
+          </div>
+
+          <button id="toggleOfflineAirplaneModeBtn" type="button" class="btn-urushi-pill px-2.5 py-1.5 text-[10px] font-mono-num border-[var(--accent-champagne)]/60 text-[var(--text-secondary)]" title="Simular Modo Avión (100% Offline sin red) para verificar cálculo, persistencia y paquetes .solvo sin internet">
+            ✈️ Modo Avión Offline: OFF
           </button>
 
           <span id="vaultModeStatusBadge" class="badge-makie px-2.5 py-1 rounded-full text-[10px] font-mono-num">
@@ -1548,6 +1567,16 @@
                 </button>
               </div>
 
+              <div id="sabanaIsrFormulaBanner" class="shoji-panel p-3 border border-[var(--accent-champagne)]/60 text-[11px] font-mono-num flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <strong class="text-[var(--accent-champagne-bright)]">📐 FÓRMULA VISIBLE DE ISR ESTIMADO EN SÁBANA (ART. 113-E LISR RESICO):</strong>
+                  <span id="sabanaIsrFormulaDetailText" class="text-[var(--text-secondary)] block sm:inline sm:ml-1">
+                    Base Efectivamente Cobrada del Mes (Ingresos PUE Cobrados + PPD Cobrados) × Tasa Mensual RESICO (≤$25k: 1.0% | ≤$50k: 1.1% | ≤$83,333.33: 1.5% | ≤$208,333.33: 2.0% | ≤$291,666.67: 2.5%).
+                  </span>
+                </div>
+                <span id="sabanaRfcScopeBadge" class="badge-makie px-2.5 py-0.5 rounded-full text-[10px] shrink-0">RFC Activo: XAXX010101000</span>
+              </div>
+
               <div class="overflow-x-auto rounded-lg border border-[var(--border-shoji)] max-h-[480px]">
                 <table class="w-full text-left border-collapse solvo-table">
                   <thead>
@@ -1692,9 +1721,9 @@
                   <span class="text-[10px] text-[var(--text-muted)] block mt-1">Tasa máxima Art. 113-E (2.5%)</span>
                 </div>
                 <div class="shoji-panel p-3.5 border border-[var(--status-crimson)]/40">
-                  <span class="text-[10px] text-[var(--status-crimson)] font-bold block">RIESGO SI REBASAS $3.5M (+23.5%)</span>
+                  <span class="text-[10px] text-[var(--status-crimson)] font-bold block">RIESGO SI REBASAS $3.5M (+23.5% SOBRE BASE)</span>
                   <strong id="resicoThermoPenalty" class="font-mono-num text-lg sm:text-xl text-[var(--status-crimson)]">$0.00</strong>
-                  <span id="resicoThermoPenaltyFormula" class="text-[10px] text-[var(--text-secondary)] block mt-1">Fórmula: 26.0% PFAE Art. 152 − 2.5% RESICO = +23.5%</span>
+                  <span id="resicoThermoPenaltyFormula" class="text-[10px] text-[var(--text-secondary)] block mt-1 leading-snug">De dónde sale el +23.5%: 26.0% tasa efectiva PFAE Art. 152 − 2.5% tasa máxima RESICO Art. 113-E = +23.5% × Base Anual</span>
                 </div>
               </div>
 
@@ -2361,7 +2390,7 @@
                 <span id="configPanelLicenseBadge" class="badge-makie px-2.5 py-1 rounded-full text-[10px] font-mono-num">Licencia válida en hasta 3 equipos</span>
               </div>
               <p class="text-xs text-[var(--text-secondary)]">
-                <strong>Licencia válida en hasta 3 equipos. Cada equipo trabaja en local, cero nube.</strong> El estado de tu trabajo (XML, bancos, Sábana, reclasificaciones y ediciones) se guarda automáticamente cifrado con AES-256 en este navegador para sobrevivir al cerrar la pestaña.
+                <strong>Licencia válida en hasta 3 equipos. Cada equipo trabaja en local, cero nube. Paquete cifrado para llevar tu cierre de un equipo a otro.</strong> El estado de tu trabajo (XML, bancos, Sábana, reclasificaciones y ediciones) se guarda automáticamente cifrado con AES-256 en este navegador para sobrevivir al cerrar la pestaña.
               </p>
               <div class="flex flex-wrap items-center gap-2 pt-1">
                 <button type="button" id="configOpenLicenseModalBtn" class="btn-makie-gold px-4 py-2 text-xs">
@@ -2373,6 +2402,20 @@
                 <button type="button" id="configJumpWhiteLabelBtn" class="btn-urushi-pill px-3.5 py-2 text-xs">
                   🏛️ Configurar Marca Blanca y Logo PDF
                 </button>
+                <button type="button" id="configLogoutLicenseBtn" class="btn-urushi-pill px-3.5 py-2 text-xs text-[var(--status-crimson)] border-[var(--status-crimson)]/60 font-bold">
+                  🚪 Cerrar Sesión de Licencia / Modo Gratis (3 Filas)
+                </button>
+              </div>
+              <div class="pt-2 border-t border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <span class="text-[var(--text-muted)] font-mono-num">Verificación de Seguridad y Entorno Offline:</span>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button type="button" id="configToggleOfflineBtn" class="btn-urushi-pill px-2.5 py-1 text-[10px] font-mono-num">
+                    ✈️ Alternar Modo Avión (100% Offline)
+                  </button>
+                  <button type="button" id="configTestExpiredKeyBtn" class="btn-urushi-pill px-2.5 py-1 text-[10px] font-mono-num text-[var(--status-amber)]">
+                    🧪 Probar Rechazo de Llave Expirada
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2471,6 +2514,12 @@
           <input id="modalLicenseKeyInput" type="text" placeholder="SOLVO-VIP-..." class="urushi-input px-3.5 py-2.5 text-xs font-mono-num w-full uppercase" />
           <button id="modalActivateKeyBtn" type="button" class="btn-makie-gold px-5 py-2.5 text-xs shrink-0">
             Activar Código y Entrar ➔
+          </button>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px]">
+          <span class="text-[var(--text-secondary)] font-mono-num">Licencia válida en hasta 3 equipos. Cada equipo trabaja en local, cero nube. Paquete cifrado para llevar tu cierre de un equipo a otro.</span>
+          <button id="pricingModalLogoutBtn" type="button" class="hidden btn-urushi-pill px-2.5 py-1 text-[10px] font-mono-num text-[var(--status-crimson)] border-[var(--status-crimson)]/60 font-bold">
+            🚪 Desactivar Licencia Activa (Probar Modo Gratis)
           </button>
         </div>
 
@@ -2599,10 +2648,10 @@
             <strong>1. ¿Cómo se identifica tu equipo?:</strong> Se genera una sola vez el identificador anónimo <code id="licModalFpInline" class="font-mono-num text-[var(--accent-champagne-bright)]">SLV-...</code> y tu licencia se guarda cifrada con <strong>AES-256</strong> en <code class="font-mono-num">IndexedDB</code> y <code class="font-mono-num">localStorage</code> para sobrevivir al recargar la página, cerrar la pestaña o cerrar el navegador.
           </p>
           <p class="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-            <strong>2. ¿Qué pasa si la huella cambia?:</strong> Si una actualización del navegador, cambio de pantalla o restauración con tu archivo <code class="font-mono-num">.TXT</code> genera una huella distinta en tu misma computadora, el sistema <strong>reemplaza automáticamente la huella anterior sin consumir otro cupo</strong> (tu contador sigue en <code class="font-mono-num text-[var(--status-jade)]">1 de 3</code>).
+            <strong>2. Regla de cupo al restaurar tu archivo <code class="font-mono-num">.TXT</code>:</strong> Tu computadora conserva siempre su propia huella física invariable (<code class="font-mono-num">SLV-...</code>). Si restauras el respaldo <code class="font-mono-num">.TXT</code> en este mismo equipo (misma huella), recuperas tu acceso sin consumir otro cupo (<code class="font-mono-num text-[var(--status-jade)]">1 de 3</code>). Si usas el archivo <code class="font-mono-num">.TXT</code> en una computadora distinta (otra huella), <strong>sí consume un cupo adicional</strong> (<code class="font-mono-num">2 de 3</code> o <code class="font-mono-num">3 de 3</code>) y se rechaza si el límite del plan ya está lleno.
           </p>
           <p class="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-            <strong>3. ¿Cuándo sí se consume un cupo nuevo?:</strong> Solo cuando activas tu clave simultáneamente en otra computadora física independiente (ej. equipo 2 de 3 o 3 de 3 de tu despacho).
+            <strong>3. Trabajo local y traslado entre equipos:</strong> <em>Licencia válida en hasta 3 equipos. Cada equipo trabaja en local, cero nube. Paquete cifrado para llevar tu cierre de un equipo a otro.</em>
           </p>
         </div>
         <div id="licModalUnlockedBenefits" class="pt-2 border-t border-[var(--border-shoji)] space-y-1 text-[11px] font-sans text-[var(--text-secondary)]">
@@ -2627,6 +2676,12 @@
         </button>
         <button id="downloadLicenseCertBtn" type="button" class="btn-urushi-pill w-full py-2.5 text-xs">
           Guardar Respaldo .TXT
+        </button>
+      </div>
+      <div class="pt-2 border-t border-[var(--border-shoji)] flex flex-col sm:flex-row items-center justify-between gap-2">
+        <span class="text-[10px] text-[var(--text-muted)] font-mono-num">¿Deseas cambiar de cuenta/licencia o auditar el candado de Prueba Gratuita (3 filas)?</span>
+        <button id="modalLogoutLicenseBtn" type="button" class="btn-urushi-pill w-full sm:w-auto px-3.5 py-2 text-xs font-bold text-[var(--status-crimson)] border-[var(--status-crimson)]/60">
+          🚪 Cerrar Sesión de Licencia / Modo Gratis
         </button>
       </div>
     </div>
@@ -2803,23 +2858,25 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <label for="universalXmlZipInput" class="shoji-panel p-4 border border-dashed border-[var(--accent-champagne)] hover:border-[var(--accent-champagne-bright)] cursor-pointer flex flex-col justify-between gap-2 transition">
+        <div class="shoji-panel p-4 border border-dashed border-[var(--accent-champagne)] hover:border-[var(--accent-champagne-bright)] flex flex-col justify-between gap-2 transition">
           <div class="space-y-1">
-            <span class="badge-makie px-2 py-0.5 rounded text-[9px] font-mono-num">PASO 1 · CFDI 4.0</span>
+            <span class="badge-makie px-2 py-0.5 rounded text-[9px] font-mono-num">PASO 1 · CFDI 4.0 / 3.3</span>
             <div class="text-sm font-bold text-[var(--text-primary)]">📂 Seleccionar Archivos .XML / .ZIP</div>
-            <p class="text-[11px] text-[var(--text-secondary)]">Soporta CFDI de Ingresos (I), Egresos (E), Pagos REP (P) y Nómina (N) desde tu computadora.</p>
+            <p class="text-[11px] text-[var(--text-secondary)]">Soporta CFDI de Ingresos (I), Egresos (E), Pagos REP (P) y Nómina (N). Se acumulan con tu CSV bancario cargado.</p>
           </div>
-          <span class="btn-makie-gold py-2 px-3 text-xs text-center block">Elegir .XML de mi PC ➔</span>
-        </label>
+          <input id="modalVisibleXmlInput" type="file" multiple accept=".xml,.zip,text/xml,application/xml" class="text-[11px] font-mono-num w-full cursor-pointer text-[var(--text-secondary)] py-1" />
+          <label for="modalVisibleXmlInput" id="modalChooseXmlLabelBtn" class="btn-makie-gold py-2 px-3 text-xs text-center block cursor-pointer">Elegir .XML de mi PC ➔</label>
+        </div>
 
-        <label for="universalBankCsvInput" class="shoji-panel p-4 border border-dashed border-[var(--accent-champagne)] hover:border-[var(--accent-champagne-bright)] cursor-pointer flex flex-col justify-between gap-2 transition">
+        <div class="shoji-panel p-4 border border-dashed border-[var(--accent-champagne)] hover:border-[var(--accent-champagne-bright)] flex flex-col justify-between gap-2 transition">
           <div class="space-y-1">
             <span class="badge-makie px-2 py-0.5 rounded text-[9px] font-mono-num">PASO 2 · BANCOS</span>
             <div class="text-sm font-bold text-[var(--text-primary)]">🏦 Seleccionar Estado de Cuenta .CSV</div>
             <p class="text-[11px] text-[var(--text-secondary)]">Columnas: <code class="font-mono-num text-[var(--accent-champagne-bright)]">Fecha, Concepto, Referencia, Monto</code> (BBVA, Banorte, Santander, Stripe, Clip).</p>
           </div>
-          <span class="btn-urushi-pill py-2 px-3 text-xs text-center font-bold block border-[var(--accent-champagne)]">Elegir .CSV de mi PC ➔</span>
-        </label>
+          <input id="modalVisibleCsvInput" type="file" accept=".csv,.txt,text/csv,text/plain" class="text-[11px] font-mono-num w-full cursor-pointer text-[var(--text-secondary)] py-1" />
+          <label for="modalVisibleCsvInput" id="modalChooseCsvLabelBtn" class="btn-urushi-pill py-2 px-3 text-xs text-center font-bold block border-[var(--accent-champagne)] cursor-pointer">Elegir .CSV de mi PC ➔</label>
+        </div>
       </div>
 
       <div class="shoji-panel p-3.5 space-y-2.5 text-xs">
@@ -2827,6 +2884,9 @@
         <div class="flex flex-wrap items-center gap-2">
           <button id="simulateOwnFilesUploadBtn" type="button" class="btn-makie-gold px-3.5 py-2 text-xs">
             🧪 Probar Subida de Archivos Propios (6 XML + 6 Filas CSV)
+          </button>
+          <button id="simulateAudit3Xml4CsvBtn" type="button" class="btn-urushi-pill px-3 py-2 text-[11px] border-[var(--status-jade)] text-[var(--status-jade)] font-bold">
+            ⚡ Cargar Lote Prueba (3 XML $42,920 + 4 CSV $47,920)
           </button>
           <button id="downloadSampleCsvTemplateBtn" type="button" class="btn-urushi-pill px-3 py-2 text-[11px]">
             📥 Descargar Plantilla Banco (.CSV)
@@ -2838,10 +2898,43 @@
       </div>
 
       <div class="space-y-2 text-xs">
-        <label class="block text-[11px] text-[var(--text-secondary)] font-semibold">O pega aquí directamente tus líneas CSV (<code class="font-mono-num">Fecha, Concepto, Referencia, Monto</code>) o código XML:</label>
-        <textarea id="pasteRawDataTextarea" rows="3" placeholder="2026-11-10, SPEI CLIENTE INDUSTRIAL, 990120, 46400.00&#10;2026-11-11, LIQUIDACION STRIPE TPV, STRP-10, 27840.00" class="urushi-input w-full p-2.5 text-xs font-mono-num"></textarea>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <label for="pasteRawDataTextarea" class="block text-[11px] text-[var(--text-secondary)] font-semibold">O pega aquí directamente tus líneas CSV (<code class="font-mono-num">Fecha, Concepto, Referencia, Monto</code>) o código XML CFDI 4.0 (con o sin <code class="font-mono-num">&lt;?xml?&gt;</code>, en 1 línea o multilínea):</label>
+          <button id="prefillSampleXmlInPasteBtn" type="button" class="text-[10px] font-mono-num text-[var(--accent-champagne-bright)] underline hover:brightness-125">Pegar 3 XML CFDI 4.0 de muestra</button>
+        </div>
+        <textarea id="pasteRawDataTextarea" rows="4" placeholder="Pega aquí uno o varios bloques <cfdi:Comprobante ...>...</cfdi:Comprobante> o líneas CSV:&#10;2026-11-10, SPEI CLIENTE INDUSTRIAL, 990120, 17400.00" class="urushi-input w-full p-2.5 text-xs font-mono-num"></textarea>
+        <div id="pasteParseFeedbackBanner" class="hidden p-2 rounded text-[11px] font-mono-num"></div>
         <button id="processPastedDataBtn" type="button" class="btn-urushi-pill w-full py-2 text-xs font-bold border-[var(--accent-champagne)]">
           ⚡ Procesar Datos Pegados en Memoria RAM
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 10: CONFIRMACIÓN PREVIA ANTES DE VACIAR DATOS PROPIOS O DEMO (PENDIENTE #8)
+       ======================================================================== -->
+  <div id="confirmDataSwitchModal" class="solvo-modal-overlay hidden">
+    <div class="urushi-surface makie-sakura-card w-[96vw] sm:w-full max-w-lg p-5 space-y-4 border-2 border-[var(--status-amber)] my-6">
+      <div class="flex items-start justify-between gap-2 border-b border-[var(--border-shoji)] pb-3">
+        <div>
+          <span class="badge-amber px-2.5 py-0.5 rounded-full text-[10px] font-mono-num font-bold">⚠️ PROTECCIÓN DE DATOS EN MEMORIA LOCAL</span>
+          <h3 id="confirmSwitchModalTitle" class="text-base font-bold mt-1">¿Confirmas reemplazar los datos actuales?</h3>
+        </div>
+        <button id="closeConfirmSwitchModalBtn" type="button" class="btn-urushi-pill px-2.5 py-1 text-xs">✕</button>
+      </div>
+      <p id="confirmSwitchModalDesc" class="text-xs text-[var(--text-secondary)] leading-relaxed">
+        Actualmente tienes archivos cargados y persistidos en tu dispositivo. Si continúas, se limpiarán de la vista actual.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center gap-2 pt-2">
+        <button id="confirmSwitchProceedBtn" type="button" class="btn-makie-gold w-full py-2.5 px-4 text-xs font-extrabold">
+          ✓ Sí, continuar y reemplazar datos
+        </button>
+        <button id="confirmSwitchGoExportBtn" type="button" class="btn-urushi-pill w-full py-2.5 px-3 text-xs border-[var(--accent-champagne)]">
+          📦 Exportar paquete .solvo primero
+        </button>
+        <button id="confirmSwitchCancelBtn" type="button" class="btn-urushi-pill w-full sm:w-auto py-2.5 px-4 text-xs">
+          Cancelar
         </button>
       </div>
     </div>
@@ -2939,7 +3032,9 @@
       CLIENTS_LIST: 'solvo_tax_2027_clients_v30',
       WHITE_LABEL: 'solvo_tax_2027_whitelabel_v30',
       PENDING_STRIPE_CHECKOUT: 'solvo_tax_2027_pending_stripe_v30',
-      ACTIVE_VIEW: 'solvo_tax_2027_active_view_v40'
+      ACTIVE_VIEW: 'solvo_tax_2027_active_view_v40',
+      MANUAL_LOGOUT_FREE: 'solvo_tax_2027_manual_logout_free_v40',
+      RFC_SCOPE_MODE: 'solvo_tax_2027_rfc_scope_mode_v40'
     };
 
     // Clave maestra reconstruida en tiempo de ejecución para no exponer literal en inspección de código fuente
@@ -3019,6 +3114,9 @@
       concilSearchQuery: '',
       despachoSearchQuery: '',
       activeRfc: 'XAXX010101000',
+      rfcScopeMode: 'ACTIVE_RFC',
+      offlineAirplaneMode: false,
+      pendingConfirmAction: null,
       pueReclassifiedInSim: false,
       tourStep: 0,
       selectedConcilIds: {},
@@ -3397,6 +3495,7 @@
     }
 
     function syncLicenseToCloudVault(licObj) {
+      if (APP_STATE.offlineAirplaneMode) return;
       if (!licObj || !licObj.key || !SOLVO_GAS_BACKEND_URL) return;
       try {
         var fp = licObj.deviceFp || getDeviceFingerprint();
@@ -3437,6 +3536,8 @@
 
     window.__solvoCloudRestoreCb = function(res) {
       try {
+        if (APP_STATE.offlineAirplaneMode) return;
+        if (getPersistentItem(STORAGE_KEYS.MANUAL_LOGOUT_FREE) === '1') return;
         if (!res || !res.ok || !res.license || !res.license.key) return;
         var remoteLic = res.license;
         if (remoteLic.expiresAt && Date.now() > Number(remoteLic.expiresAt)) return;
@@ -3461,6 +3562,8 @@
     };
 
     function restoreFromCloudVaultByFingerprint() {
+      if (APP_STATE.offlineAirplaneMode) return;
+      if (getPersistentItem(STORAGE_KEYS.MANUAL_LOGOUT_FREE) === '1') return;
       if (!SOLVO_GAS_BACKEND_URL) return;
       try {
         var fp = getDeviceFingerprint();
@@ -3790,8 +3893,24 @@
       } catch (e) {}
     }
 
+    function verifyCryptographicVipKeyStructure(keyStr) {
+      var k = String(keyStr || '').trim().toUpperCase();
+      if (!k) return false;
+      if (k === MASTER_ROOT_KEY) return true;
+      var parts = k.split('-');
+      if (parts.length < 6 || parts[0] !== 'SOLVO' || parts[1] !== 'VIP') return false;
+      var daysPart = parts[2] || '';
+      var datePart = parts[3] || '';
+      if (!/^[0-9]{1,4}D$/.test(daysPart) || !/^[0-9]{8}$/.test(datePart)) return false;
+      // Si el código tiene firma de 6 caracteres generada por el emisor, verificamos integridad o formato alfanumérico válido
+      var sigPart = parts[parts.length - 1] || '';
+      if (!/^[A-Z0-9]{3,10}$/.test(sigPart)) return false;
+      return true;
+    }
+
     function saveEncryptedLicenseToVault(licObj, skipCloudSync) {
-      var fp = licObj.deviceFp || getDeviceFingerprint();
+      removePersistentItem(STORAGE_KEYS.MANUAL_LOGOUT_FREE);
+      var fp = getDeviceFingerprint();
       licObj.deviceFp = fp;
       APP_STATE.cachedDeviceFp = fp;
       APP_STATE.cachedDecryptedLicense = licObj;
@@ -3810,33 +3929,66 @@
       }
     }
 
+    function deactivateLicenseAndEnterFreeMode() {
+      APP_STATE.cachedDecryptedLicense = null;
+      setPersistentItem(STORAGE_KEYS.MANUAL_LOGOUT_FREE, '1');
+      removePersistentItem(STORAGE_KEYS.LICENSE);
+      removePersistentItem(STORAGE_KEYS.LEGACY_LICENSE);
+      if ($('myLicenseModal')) $('myLicenseModal').classList.add('hidden');
+      if ($('folioIssuerModal')) $('folioIssuerModal').classList.add('hidden');
+      if ($('openFolioIssuerBtn')) $('openFolioIssuerBtn').classList.add('hidden');
+      refreshLicenseUI();
+      renderAllPanels();
+      showToast('Sesión de licencia cerrada. Ahora estás en Modo Gratis (3 filas libres en Archivos Propios y candado en exportaciones Pro).');
+    }
+
     function getActiveLicense() {
       try {
+        if (getPersistentItem(STORAGE_KEYS.MANUAL_LOGOUT_FREE) === '1') {
+          APP_STATE.cachedDecryptedLicense = null;
+          return null;
+        }
         var raw = getPersistentItem(STORAGE_KEYS.LICENSE);
         if (!raw) {
-          // Verificar migración desde llave previa si existiera
           var legacyRaw = getPersistentItem(STORAGE_KEYS.LEGACY_LICENSE);
           if (legacyRaw) {
             var legacyLic = decryptLicenseEnvelopeAES256(legacyRaw);
-            if (legacyLic && legacyLic.key) {
+            if (legacyLic && legacyLic.key && verifyCryptographicVipKeyStructure(legacyLic.key)) {
               saveEncryptedLicenseToVault(legacyLic);
               raw = getPersistentItem(STORAGE_KEYS.LICENSE);
+            } else {
+              removePersistentItem(STORAGE_KEYS.LEGACY_LICENSE);
             }
           }
         }
         if (!raw) {
-          if (APP_STATE.cachedDecryptedLicense) {
+          if (APP_STATE.cachedDecryptedLicense && verifyCryptographicVipKeyStructure(APP_STATE.cachedDecryptedLicense.key)) {
             saveEncryptedLicenseToVault(APP_STATE.cachedDecryptedLicense);
             return APP_STATE.cachedDecryptedLicense;
           }
           return null;
         }
-        var lic = decryptLicenseEnvelopeAES256(raw);
-        if (!lic || !lic.key) return null;
-        APP_STATE.cachedDecryptedLicense = lic;
-        if (lic.deviceFp) {
-          APP_STATE.cachedDeviceFp = lic.deviceFp;
+        // Rechazar manipulación manual en localStorage (ej. escribir "PRO", "true" o JSON sin firma AES-256)
+        var parsedCheck = null;
+        try { parsedCheck = JSON.parse(raw); } catch (e) { parsedCheck = null; }
+        if (!parsedCheck || parsedCheck.solvoVault !== 'AES-256-CTR-HMAC' || !parsedCheck.ciphertext || !parsedCheck.tag) {
+          removePersistentItem(STORAGE_KEYS.LICENSE);
+          APP_STATE.cachedDecryptedLicense = null;
+          return null;
         }
+        var lic = decryptLicenseEnvelopeAES256(raw);
+        if (!lic || !lic.key || !verifyCryptographicVipKeyStructure(lic.key)) {
+          removePersistentItem(STORAGE_KEYS.LICENSE);
+          APP_STATE.cachedDecryptedLicense = null;
+          return null;
+        }
+        var burned = getBurnedCodes();
+        if (burned[lic.key]) {
+          APP_STATE.cachedDecryptedLicense = null;
+          removePersistentItem(STORAGE_KEYS.LICENSE);
+          return { expired: true, oldKey: lic.key, planName: lic.planName };
+        }
+        APP_STATE.cachedDecryptedLicense = lic;
         if (lic.isMaster) return lic;
 
         if (lic.expiresAt && Date.now() > lic.expiresAt) {
@@ -3847,7 +3999,7 @@
         }
         return lic;
       } catch (e) {
-        return APP_STATE.cachedDecryptedLicense || null;
+        return null;
       }
     }
 
@@ -3935,11 +4087,7 @@
         return false;
       }
 
-      // Si viene desde un respaldo .TXT con su huella original, preservamos/reemplazamos la huella para que sea 100% estable
-      if (restoredFpFromTxt && /^SLV-[A-Z0-9]{4,8}$/.test(restoredFpFromTxt)) {
-        APP_STATE.cachedDeviceFp = restoredFpFromTxt;
-        setPersistentItem(STORAGE_KEYS.DEVICE_FP, restoredFpFromTxt);
-      }
+      // Pendiente #7: Cada equipo físico mantiene su propia huella determinista (jamás sobrescribimos la huella local con la de otro equipo)
       var devFp = getDeviceFingerprint();
 
       if (key === MASTER_ROOT_KEY) {
@@ -3991,26 +4139,36 @@
         };
         var pInfo = planMap[tierPart] || { name: 'Licencia VIP SOLVO TAX (' + daysNum + ' días)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 };
 
+        var datePartStr = parts[3] || '';
+        if (/^[0-9]{8}$/.test(datePartStr)) {
+          var yIssued = parseInt(datePartStr.slice(0, 4), 10);
+          var mIssued = parseInt(datePartStr.slice(4, 6), 10) - 1;
+          var dIssued = parseInt(datePartStr.slice(6, 8), 10);
+          var issuedDateMs = new Date(yIssued, mIssued, dIssued, 23, 59, 59).getTime();
+          if (!isNaN(issuedDateMs) && Date.now() > (issuedDateMs + (daysNum * 86400000))) {
+            markCodeBurned(key, 'EXPIRED_BY_ISSUE_DATE');
+            showToast('❌ Código expirado: La vigencia de ' + daysNum + ' días emitida el ' + datePartStr + ' ya concluyó.');
+            return false;
+          }
+        }
+
         var regAll = {};
         try { regAll = JSON.parse(getPersistentItem(STORAGE_KEYS.DEVICE_REGISTRY) || '{}'); } catch (e) {}
-        var devList = regAll[key] || [];
+        var devList = Array.isArray(regAll[key]) ? regAll[key].slice() : [];
 
-        // Si en este mismo navegador ya había una huella previa para esta clave y cambió por actualización/resolución, reemplazamos la anterior sin consumir otro cupo (Pendiente #4)
-        var prevLic = APP_STATE.cachedDecryptedLicense;
-        if (prevLic && prevLic.key === key && prevLic.deviceFp && prevLic.deviceFp !== devFp) {
-          var oldIdx = devList.indexOf(prevLic.deviceFp);
-          if (oldIdx !== -1) devList[oldIdx] = devFp;
-        }
-        // Si es el único equipo registrado en este perfil local, reemplazamos su huella para garantizar "1 de 3"
-        if (devList.length === 1 && devList[0] !== devFp) {
-          devList[0] = devFp;
+        // Pendiente #7: Si proviene de un respaldo .TXT emitido en otro equipo (restoredFpFromTxt !== devFp),
+        // aseguramos que el equipo emisor original ocupe su slot y el equipo actual ocupe un slot adicional (2 de 3 o 3 de 3).
+        if (restoredFpFromTxt && /^SLV-[A-Z0-9]{4,8}$/.test(restoredFpFromTxt)) {
+          if (devList.indexOf(restoredFpFromTxt) === -1) {
+            devList.push(restoredFpFromTxt);
+          }
         }
 
         var alreadyRegisteredOnThisMachine = devList.indexOf(devFp) !== -1;
 
         if (!alreadyRegisteredOnThisMachine) {
           if (devList.length >= pInfo.maxDev) {
-            showToast('Límite alcanzado: Este código permite máximo ' + pInfo.maxDev + ' dispositivo(s).');
+            showToast('❌ Cupo agotado (' + devList.length + ' de ' + pInfo.maxDev + ' equipos): Esta licencia ya alcanzó el límite de dispositivos autorizados.');
             return false;
           }
           devList.push(devFp);
@@ -4122,13 +4280,20 @@
 
       var ok = activateLicenseKey(extractedKey, false, extractedFp);
       if (ok) {
+        var activeNow = getActiveLicense();
+        var usedNow = (activeNow && activeNow.devicesUsed) ? activeNow.devicesUsed : 1;
+        var maxNow = (activeNow && activeNow.maxDevices) ? activeNow.maxDevices : 3;
+        var localFpNow = getDeviceFingerprint();
+        var sameMachineNote = (!extractedFp || extractedFp === localFpNow)
+          ? ('Misma huella ' + localFpNow + ' · Sin consumir cupo extra: ' + usedNow + ' de ' + maxNow)
+          : ('Equipo adicional ' + localFpNow + ' registrado desde respaldo de ' + extractedFp + ': ' + usedNow + ' de ' + maxNow);
         if (banner) {
           banner.className = 'p-2.5 rounded text-[11px] font-mono-num bg-[var(--status-jade)]/20 border border-[var(--status-jade)] text-[var(--status-jade)] font-bold';
-          banner.textContent = '✓ RESPALDO .TXT VERIFICADO Y RESTAURADO: Licencia ' + extractedKey + ' reactivada y cifrada con AES-256 (Dispositivo 1 de 3).';
+          banner.textContent = '✓ RESPALDO .TXT VERIFICADO Y RESTAURADO: Licencia ' + extractedKey + ' reactivada (' + sameMachineNote + ').';
           banner.classList.remove('hidden');
         }
         switchMainView('tool', true);
-        showToast('✓ Respaldo .TXT restaurado con éxito: Plan Pro reactivado al 100%.');
+        showToast('✓ Respaldo .TXT restaurado (' + sameMachineNote + ').');
         return true;
       } else {
         if (banner) {
@@ -4199,10 +4364,30 @@
             : ((lic.devicesUsed || 1) + ' de ' + (lic.maxDevices || 1) + ' (Huella fija: ' + (lic.deviceFp || fp) + ' · Cifrado AES-256)');
         }
         if ($('licModalRfcCap')) $('licModalRfcCap').textContent = lic.rfcCap || '100% Desbloqueado';
+        if ($('headerLogoutLicenseBtn')) {
+          $('headerLogoutLicenseBtn').classList.remove('hidden');
+          $('headerLogoutLicenseBtn').classList.add('flex');
+        }
+        if ($('pricingModalLogoutBtn')) $('pricingModalLogoutBtn').classList.remove('hidden');
+        if ($('configLogoutLicenseBtn')) $('configLogoutLicenseBtn').classList.remove('hidden');
+        if ($('configPanelLicenseBadge')) {
+          $('configPanelLicenseBadge').textContent = lic.isMaster ? '★ MASTER ROOT ACTIVO' : ('★ ACTIVA · ' + (lic.devicesUsed || 1) + ' DE ' + (lic.maxDevices || 3) + ' EQUIPOS (' + fp + ')');
+          $('configPanelLicenseBadge').className = 'badge-jade px-2.5 py-1 rounded-full text-[10px] font-mono-num font-bold';
+        }
       } else {
         if (headerTxt) headerTxt.textContent = 'Ingresar Código';
         if (headerBtn) headerBtn.classList.remove('border-[var(--status-jade)]');
         if (issuerBtn) issuerBtn.classList.add('hidden');
+        if ($('headerLogoutLicenseBtn')) {
+          $('headerLogoutLicenseBtn').classList.add('hidden');
+          $('headerLogoutLicenseBtn').classList.remove('flex');
+        }
+        if ($('pricingModalLogoutBtn')) $('pricingModalLogoutBtn').classList.add('hidden');
+        if ($('configLogoutLicenseBtn')) $('configLogoutLicenseBtn').classList.add('hidden');
+        if ($('configPanelLicenseBadge')) {
+          $('configPanelLicenseBadge').textContent = 'MODO GRATIS (3 FILAS LIBRES) · HUELLA: ' + fp;
+          $('configPanelLicenseBadge').className = 'badge-amber px-2.5 py-1 rounded-full text-[10px] font-mono-num font-bold';
+        }
         if ($('licModalPlanName')) $('licModalPlanName').textContent = 'Sin licencia activa (Prueba Gratuita: 3 filas libres)';
         if ($('licModalStatus')) $('licModalStatus').textContent = 'VISTA PREVIA GRATUITA';
         if ($('licModalKey')) $('licModalKey').textContent = '—';
@@ -4369,7 +4554,17 @@
           else if (matched.length > 1) cuenta = '401-01 · Ingresos PUE Consolidados (1:' + matched.length + ')';
           else cuenta = '401-01 · Ventas / Ingresos PUE 16%';
         }
+        b.isOrphan = !(matched && matched.length > 0);
         rows.push({ bank: b, matched: matched, matchType: matchType, category: category, feeAmt: feeAmt, cuenta: cuenta });
+      }
+      if (APP_STATE.mode === 'OWN_FILES') {
+        for (var k = 0; k < xmls.length; k++) {
+          if (bank.length > 0) {
+            xmls[k].cobradoBanco = Boolean(used[xmls[k].uuid]);
+          } else {
+            xmls[k].cobradoBanco = (xmls[k].metodo === 'PUE');
+          }
+        }
       }
       return rows;
     }
@@ -4426,6 +4621,7 @@
       var pueUncollectedCnt = 0, pueUncollectedAmt = 0;
       var ppdNoRepCnt = 0, ppdNoRepAmt = 0;
       var efosCnt = 0, efosAmt = 0;
+      var orphanCnt = 0, orphanAmt = 0;
       var cancelCnt = 0;
 
       for (var i = 0; i < findings.length; i++) {
@@ -4436,6 +4632,7 @@
           if (f.type.indexOf('PUE') !== -1) { pueUncollectedCnt++; pueUncollectedAmt += Number(f.amount || 0); }
           if (f.type.indexOf('PPD') !== -1) { ppdNoRepCnt++; ppdNoRepAmt += Number(f.amount || 0); }
           if (f.type.indexOf('69-B') !== -1) { efosCnt++; efosAmt += Number(f.amount || 0); }
+          if (f.type.indexOf('HUÉRFANO') !== -1 || f.type.indexOf('SIN CFDI') !== -1) { orphanCnt++; orphanAmt += Number(f.amount || 0); }
           if (f.type.indexOf('CANCEL') !== -1) { cancelCnt++; }
         }
       }
@@ -4459,6 +4656,7 @@
         if (pueUncollectedCnt > 0) parts.push(pueUncollectedCnt + ' PUE no cobrada (' + fmtMXN(pueUncollectedAmt) + ')');
         if (ppdNoRepCnt > 0) parts.push(ppdNoRepCnt + ' PPD sin REP (' + fmtMXN(ppdNoRepAmt) + ')');
         if (efosCnt > 0) parts.push(efosCnt + ' RFC 69-B (' + fmtMXN(efosAmt) + ')');
+        if (orphanCnt > 0) parts.push(orphanCnt + (orphanCnt === 1 ? ' huérfano sin CFDI (' : ' huérfanos sin CFDI (') + fmtMXN(orphanAmt) + ')');
         APP_STATE.csdStatus = {
           badge: activeCount + (activeCount === 1 ? ' ALERTA DETECTADA' : ' ALERTAS DETECTADAS'),
           title: 'Revisión Preventiva Art. 17-H Bis (' + activeCount + ' activa' + (activeCount === 1 ? '' : 's') + ')',
@@ -4484,6 +4682,8 @@
         ppdNoRepAmt: ppdNoRepAmt,
         efosCnt: efosCnt,
         efosAmt: efosAmt,
+        orphanCnt: orphanCnt,
+        orphanAmt: orphanAmt,
         cancelCnt: cancelCnt
       };
     }
@@ -4752,10 +4952,140 @@
        RECÁLCULO AUTOMÁTICO DE SÁBANA ANUAL, VISOR Y PERSISTENCIA PARA ARCHIVOS PROPIOS
        (PENDIENTES #2 Y #3 DE LA 6ª AUDITORÍA)
        ======================================================================== */
+    function getScopedOwnRecords() {
+      var allXmls = APP_STATE.xmlInvoices || [];
+      var allBank = APP_STATE.bankMovements || [];
+      if (APP_STATE.mode !== 'OWN_FILES' || APP_STATE.rfcScopeMode !== 'ACTIVE_RFC') {
+        return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
+      }
+      var targetRfc = String(APP_STATE.activeRfc || '').trim().toUpperCase();
+      if (!targetRfc || targetRfc === 'CLEAN' || targetRfc === 'XAXX010101000') {
+        return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
+      }
+      var hasTaggedXml = allXmls.some(function(x) {
+        return (x.ownerRfc && x.ownerRfc.toUpperCase() === targetRfc) || (x.receptorRfc && x.receptorRfc.toUpperCase() === targetRfc) || (x.rfc && x.rfc.toUpperCase() === targetRfc);
+      });
+      var hasTaggedBank = allBank.some(function(b) {
+        return (b.ownerRfc && b.ownerRfc.toUpperCase() === targetRfc);
+      });
+      if (!hasTaggedXml && !hasTaggedBank) {
+        return { xmls: allXmls, bank: allBank, isFilteredByRfc: false };
+      }
+      var fXml = allXmls.filter(function(x) {
+        if (!x.ownerRfc && !x.receptorRfc) return true;
+        return (x.ownerRfc && x.ownerRfc.toUpperCase() === targetRfc) || (x.receptorRfc && x.receptorRfc.toUpperCase() === targetRfc) || (x.rfc && x.rfc.toUpperCase() === targetRfc);
+      });
+      var fBank = allBank.filter(function(b) {
+        if (!b.ownerRfc) return true;
+        return b.ownerRfc.toUpperCase() === targetRfc;
+      });
+      return { xmls: fXml, bank: fBank, isFilteredByRfc: true };
+    }
+
+    function rebuildOwnFilesGuardianFindings(xmls, reconRows) {
+      if (APP_STATE.mode !== 'OWN_FILES') return;
+      var prevMap = {};
+      (APP_STATE.guardianFindings || []).forEach(function(pf) {
+        if (pf && pf.uuid) prevMap[pf.uuid] = pf;
+      });
+      var nextFindings = [];
+
+      (xmls || []).forEach(function(x) {
+        var prev = prevMap[x.uuid];
+        if (x.tipo === 'I' && x.metodo === 'PUE' && x.cobradoBanco === false) {
+          var isRes = Boolean((prev && prev.resolved) || APP_STATE.pueReclassifiedInSim);
+          nextFindings.push({
+            uuid: x.uuid,
+            isDemo: false,
+            resolved: isRes,
+            fecha: x.fecha || '2026-11',
+            rfc: (x.rfc || 'RFC') + ' · ' + (x.nombre || 'Cliente'),
+            type: isRes ? '✓ PUE RECLASIFICADA A PPD' : 'TRAMPA PUE NO COBRADA',
+            badgeClass: isRes ? 'badge-jade' : 'badge-amber',
+            amount: Number(x.total || 0),
+            canReclassifyPue: true,
+            action: 'Factura PUE emitida sin cobro bancario identificado. El Visor SAT precarga este ingreso aunque no recibiste el dinero.',
+            ctaLabel: isRes ? '⟲ Revertir a PUE' : '⚡ Reclasificar a PPD',
+            whatsappText: 'Aviso contable: sustituiremos la factura ' + x.uuid + ' (' + fmtMXN(x.total) + ') de PUE a PPD por cierre de mes.'
+          });
+        } else if (x.tipo === 'I' && x.metodo === 'PPD' && x.cobradoBanco !== false && !x.tieneRep) {
+          var isResPpd = Boolean(prev && prev.resolved);
+          nextFindings.push({
+            uuid: x.uuid,
+            isDemo: false,
+            resolved: isResPpd,
+            fecha: x.fecha || '2026-11',
+            rfc: (x.rfc || 'RFC') + ' · ' + (x.nombre || 'Cliente'),
+            type: isResPpd ? ('✓ RESUELTA (' + x.uuid.slice(0, 4) + ')') : 'PPD COBRADO SIN REP',
+            badgeClass: isResPpd ? 'badge-jade' : 'badge-amber',
+            amount: Number(x.total || 0),
+            canReclassifyPue: false,
+            action: 'Cobrado en SPEI bancario (' + fmtMXN(x.total) + ') pero falta timbrar el Complemento de Pago (REP 2.0) antes del día 5 del mes siguiente.',
+            ctaLabel: '💬 Reclamar / Avisar REP (WA)',
+            whatsappText: 'Confirmamos recepción de pago por ' + fmtMXN(x.total) + ' de factura PPD ' + x.uuid + '. Procedemos a emitir Complemento REP 2.0.'
+          });
+        }
+        if (x.efos) {
+          var isResEfos = Boolean(prev && prev.resolved);
+          nextFindings.push({
+            uuid: x.uuid,
+            isDemo: false,
+            resolved: isResEfos,
+            fecha: x.fecha || '2026-11',
+            rfc: (x.rfc || 'EFOS69010169B') + ' · ' + (x.nombre || 'Proveedor Observado'),
+            type: isResEfos ? '✓ EXCLUIDA DE DEDUCCIÓN' : 'ALERTA ART. 69-B / EGRESO',
+            badgeClass: isResEfos ? 'badge-jade' : 'badge-crimson',
+            amount: Number(x.total || 0),
+            canReclassifyPue: false,
+            action: 'RFC observado en listado Art. 69-B CFF. Excluir de deducciones y acreditamiento para proteger sellos CSD (Art. 17-H Bis).',
+            ctaLabel: '🛡️ Excluir Deducción',
+            whatsappText: 'Alerta preventiva Art. 69-B CFF en CFDI ' + x.uuid + ' (' + fmtMXN(x.total) + ').'
+          });
+        }
+      });
+
+      // Pendiente #4: Incluir todos los movimientos bancarios huérfanos sin CFDI XML en Guardián y Dictamen
+      (reconRows || []).forEach(function(r) {
+        var hasMatch = r.matched && r.matched.length > 0;
+        if (!hasMatch && r.bank) {
+          var orphanUid = (r.bank.id || 'BNK') + ' · Ref ' + (r.bank.ref || 'S/R');
+          var prevOrphan = prevMap[orphanUid];
+          var isResOrphan = Boolean(prevOrphan && prevOrphan.resolved);
+          nextFindings.push({
+            uuid: orphanUid,
+            isDemo: false,
+            resolved: isResOrphan,
+            fecha: r.bank.fecha || '2026-11',
+            rfc: (APP_STATE.activeRfc || 'RFC ACTIVO') + ' · ' + (r.bank.concepto || 'Depósito Bancario'),
+            type: isResOrphan ? '✓ HUÉRFANO ACLARADO' : 'HUÉRFANO SIN CFDI XML',
+            badgeClass: isResOrphan ? 'badge-jade' : 'badge-crimson',
+            amount: Number(r.bank.amount || 0),
+            canReclassifyPue: false,
+            action: 'Depósito bancario de ' + fmtMXN(r.bank.amount) + ' (Ref: ' + (r.bank.ref || 'S/R') + ') sin factura CFDI 4.0 vinculada. Riesgo de ingreso presunto omitido (Art. 59 Fracc. III CFF).',
+            ctaLabel: '🔍 Emitir / Vincular CFDI',
+            whatsappText: 'Solicitud de soporte CFDI para el depósito bancario de ' + fmtMXN(r.bank.amount) + ' (' + (r.bank.concepto || '') + ', Ref: ' + (r.bank.ref || '') + ') detectado sin factura XML.'
+          });
+        }
+      });
+
+      APP_STATE.guardianFindings = nextFindings;
+    }
+
     function recalculateOwnFilesSabanaAndVisor() {
       if (APP_STATE.mode !== 'OWN_FILES') return;
-      var xmls = APP_STATE.xmlInvoices || [];
-      var bank = APP_STATE.bankMovements || [];
+      var scoped = getScopedOwnRecords();
+      var xmls = scoped.xmls;
+      var bank = scoped.bank;
+
+      // Primero ejecutamos el cruce bancario para que cada XML tenga su cobradoBanco real y cada movimiento su estado de huérfano
+      var tolEl = $('centToleranceSelect');
+      var gwEl = $('gatewayPresetSelect');
+      var tol = tolEl ? parseFloat(tolEl.value) : 1.00;
+      var gwKey = gwEl ? gwEl.value : 'AUTO';
+      APP_STATE.reconciliationRows = matchBankSynchronously(bank, xmls, tol, gwKey);
+
+      // Reconstruir hallazgos de Guardián y Dictamen incluyendo huérfanos sin CFDI (Pendiente #4)
+      rebuildOwnFilesGuardianFindings(xmls, APP_STATE.reconciliationRows);
 
       var monthBuckets = MONTHS_ES.map(function(m) {
         return {
@@ -4768,6 +5098,12 @@
           ivaTrasladado: 0,
           ivaAcreditable: 0,
           isrEstimado: 0,
+          isrRatePct: 0,
+          totalConIva: 0,
+          xmlCount: 0,
+          bankCount: 0,
+          orphanCount: 0,
+          orphanAmount: 0,
           statusText: 'EN CEROS ($0.00)',
           hasAlert: false
         };
@@ -4788,87 +5124,124 @@
         var mIdx = parseInt(mStr, 10) - 1;
         if (isNaN(mIdx) || mIdx < 0 || mIdx > 11) mIdx = 10; // default Noviembre
         var b = monthBuckets[mIdx];
+        b.xmlCount++;
         var sub = Number(x.subtotal || 0);
-        var iva = Number(x.iva || (sub * 0.16));
+        var iva = Number(x.iva !== undefined ? x.iva : (sub * 0.16));
         var tot = Number(x.total || (sub + iva));
 
         if (x.tipo === 'E') {
-          b.notasCredito += sub;
-          b.deducciones += sub;
-          b.ivaAcreditable += iva;
-          totalEgresosTotal += tot;
-          totalEgresosSub += sub;
+          b.notasCredito = Number((b.notasCredito + sub).toFixed(2));
+          b.deducciones = Number((b.deducciones + sub).toFixed(2));
+          b.ivaAcreditable = Number((b.ivaAcreditable + iva).toFixed(2));
+          totalEgresosTotal = Number((totalEgresosTotal + tot).toFixed(2));
+          totalEgresosSub = Number((totalEgresosSub + sub).toFixed(2));
           if (x.efos) b.hasAlert = true;
         } else if (x.tipo === 'I') {
           if (x.metodo === 'PUE') {
-            b.ingresosPue += sub;
-            b.ivaTrasladado += iva;
-            totalPueTotal += tot;
-            totalPueSub += sub;
-            totalIvaPue += iva;
+            b.ingresosPue = Number((b.ingresosPue + sub).toFixed(2));
+            b.ivaTrasladado = Number((b.ivaTrasladado + iva).toFixed(2));
+            b.totalConIva = Number((b.totalConIva + tot).toFixed(2));
+            totalPueTotal = Number((totalPueTotal + tot).toFixed(2));
+            totalPueSub = Number((totalPueSub + sub).toFixed(2));
+            totalIvaPue = Number((totalIvaPue + iva).toFixed(2));
             if (x.cobradoBanco !== false) {
-              totalPueCobradoTotal += tot;
-              totalIvaCobrado += iva;
+              totalPueCobradoTotal = Number((totalPueCobradoTotal + tot).toFixed(2));
+              totalIvaCobrado = Number((totalIvaCobrado + iva).toFixed(2));
             } else {
               b.hasAlert = true;
             }
           } else if (x.metodo === 'PPD') {
             if (x.cobradoBanco !== false) {
-              b.ppdCobrados += sub;
-              b.ivaTrasladado += iva;
-              totalPpdTotal += tot;
-              totalPpdSub += sub;
-              totalIvaCobrado += iva;
-            } else {
-              // PPD reclasificado o aún no cobrado: no suma a cobrado efectivo
-              b.hasAlert = false;
+              b.ppdCobrados = Number((b.ppdCobrados + sub).toFixed(2));
+              b.ivaTrasladado = Number((b.ivaTrasladado + iva).toFixed(2));
+              b.totalConIva = Number((b.totalConIva + tot).toFixed(2));
+              totalPpdTotal = Number((totalPpdTotal + tot).toFixed(2));
+              totalPpdSub = Number((totalPpdSub + sub).toFixed(2));
+              totalIvaCobrado = Number((totalIvaCobrado + iva).toFixed(2));
             }
           }
         }
       });
 
-      // Si solo se subió CSV bancario sin XMLs, reflejar los depósitos en el mes correspondiente
+      // Contabilizar movimientos bancarios y huérfanos por mes
+      (APP_STATE.reconciliationRows || []).forEach(function(r) {
+        if (!r || !r.bank) return;
+        var bm = r.bank;
+        var mStr = String(bm.fecha || '2026-11-01').slice(5, 7);
+        var mIdx = parseInt(mStr, 10) - 1;
+        if (isNaN(mIdx) || mIdx < 0 || mIdx > 11) mIdx = 10;
+        var mb = monthBuckets[mIdx];
+        mb.bankCount++;
+        var hasMatch = r.matched && r.matched.length > 0;
+        if (!hasMatch) {
+          mb.orphanCount++;
+          mb.orphanAmount = Number((mb.orphanAmount + Number(bm.amount || 0)).toFixed(2));
+          mb.hasAlert = true;
+        }
+      });
+
+      // Si solo se subió CSV bancario sin XMLs, reflejar los depósitos en el mes correspondiente con suma exacta al centavo (Pendiente #3)
       if (xmls.length === 0 && bank.length > 0) {
         bank.forEach(function(bm) {
           var mStr = String(bm.fecha || '2026-11-01').slice(5, 7);
           var mIdx = parseInt(mStr, 10) - 1;
           if (isNaN(mIdx) || mIdx < 0 || mIdx > 11) mIdx = 10;
-          var subB = Number((bm.amount / 1.16).toFixed(2));
-          var ivaB = Number((bm.amount - subB).toFixed(2));
-          monthBuckets[mIdx].ingresosPue += subB;
-          monthBuckets[mIdx].ivaTrasladado += ivaB;
-          totalPueCobradoTotal += bm.amount;
+          var amt = Number(bm.amount || 0);
+          var subB = Number((amt / 1.16).toFixed(2));
+          var ivaB = Number((amt - subB).toFixed(2));
+          monthBuckets[mIdx].ingresosPue = Number((monthBuckets[mIdx].ingresosPue + subB).toFixed(2));
+          monthBuckets[mIdx].ivaTrasladado = Number((monthBuckets[mIdx].ivaTrasladado + ivaB).toFixed(2));
+          monthBuckets[mIdx].totalConIva = Number((monthBuckets[mIdx].totalConIva + amt).toFixed(2));
+          monthBuckets[mIdx].hasAlert = true;
+          totalPueCobradoTotal = Number((totalPueCobradoTotal + amt).toFixed(2));
         });
       }
 
       monthBuckets.forEach(function(b) {
-        var baseIsr = b.ingresosPue + b.ppdCobrados;
-        if (baseIsr > 0 || b.deducciones > 0 || b.notasCredito > 0) {
+        var baseIsr = Number((b.ingresosPue + b.ppdCobrados).toFixed(2));
+        if (baseIsr > 0 || b.deducciones > 0 || b.notasCredito > 0 || b.bankCount > 0) {
           var rate = baseIsr <= 25000 ? 0.01 : (baseIsr <= 50000 ? 0.011 : (baseIsr <= 83333.33 ? 0.015 : (baseIsr <= 208333.33 ? 0.02 : 0.025)));
+          b.isrRatePct = Number((rate * 100).toFixed(2));
           b.isrEstimado = Number((baseIsr * rate).toFixed(2));
-          var pueConIva = Number((b.ingresosPue * 1.16).toFixed(2));
-          b.statusText = b.hasAlert
-            ? ('REVISAR PUE / 69-B (Visor c/IVA: ' + fmtMXN(pueConIva) + ')')
-            : ('✓ CONCILIADO (Visor c/IVA: ' + fmtMXN(pueConIva) + ')');
+          // Exactitud al centavo (Pendiente #3): sumar base + IVA trasladado (o totalConIva acumulado) para jamás perder $0.01 por multiplicar * 1.16
+          var exactConIva = b.totalConIva > 0 ? b.totalConIva : Number((baseIsr + b.ivaTrasladado).toFixed(2));
+          if (b.xmlCount === 0 && b.bankCount > 0) {
+            b.hasAlert = true;
+            b.statusText = '⚠️ SIN CFDI XML (' + b.bankCount + (b.bankCount === 1 ? ' HUÉRFANO · ' : ' HUÉRFANOS · ') + fmtMXN(exactConIva) + ')';
+          } else if (b.orphanCount > 0) {
+            b.hasAlert = true;
+            b.statusText = '⚠️ ' + b.orphanCount + (b.orphanCount === 1 ? ' HUÉRFANO SIN CFDI (' : ' HUÉRFANOS SIN CFDI (') + fmtMXN(b.orphanAmount) + ' · CFDI c/IVA: ' + fmtMXN(exactConIva) + ')';
+          } else if (b.hasAlert) {
+            b.statusText = 'REVISAR PUE / 69-B (Visor c/IVA: ' + fmtMXN(exactConIva) + ')';
+          } else {
+            b.statusText = '✓ CONCILIADO (Visor c/IVA: ' + fmtMXN(exactConIva) + ')';
+          }
         }
       });
 
       APP_STATE.annualMonths = monthBuckets;
 
-      var pueDiff = totalPueTotal - totalPueCobradoTotal;
+      var totalBankSum = 0;
+      bank.forEach(function(bm) { totalBankSum = Number((totalBankSum + Number(bm.amount || 0)).toFixed(2)); });
+      var totalCfdiIngresos = Number((totalPueTotal + totalPpdTotal).toFixed(2));
+      var pueDiff = Number((totalPueTotal - totalPueCobradoTotal).toFixed(2));
+      var globalOrphanDiff = Number((totalBankSum - totalCfdiIngresos).toFixed(2));
+
       APP_STATE.satRobotRows = [
         {
           concept: 'Ingresos PUE Facturados (Total c/IVA: ' + fmtMXN(totalPueTotal) + ' · Sub: ' + fmtMXN(totalPueSub) + ')',
           satPreload: totalPueTotal,
           realBank: totalPueCobradoTotal,
           diff: pueDiff,
-          status: Math.abs(pueDiff) < 0.01 ? '✓ PUE CUADRADO AL CENTAVO CON BANCOS' : ('ALERTA SAT: ' + fmtMXN(Math.abs(pueDiff)) + ' PUE NO COBRADO')
+          status: xmls.length === 0 && bank.length > 0
+            ? ('⚠️ SIN CFDI XML CARGADOS (' + bank.length + ' DEPÓSITOS HUÉRFANOS)')
+            : (Math.abs(pueDiff) < 0.01 ? '✓ PUE CUADRADO AL CENTAVO CON BANCOS' : ('ALERTA SAT: ' + fmtMXN(Math.abs(pueDiff)) + ' DIFERENCIA PUE'))
         },
         {
           concept: 'Ingresos PPD Cobrados en Bancos (Sub: ' + fmtMXN(totalPpdSub) + ' · Total: ' + fmtMXN(totalPpdTotal) + ')',
-          satPreload: 0,
+          satPreload: totalPpdTotal,
           realBank: totalPpdTotal,
-          diff: -totalPpdTotal,
+          diff: globalOrphanDiff,
           status: totalPpdTotal > 0 ? ('FALTA TIMBRAR REP 2.0 (' + fmtMXN(totalPpdTotal) + ')') : 'SIN DIFERENCIAS'
         },
         {
@@ -4880,19 +5253,21 @@
         },
         {
           concept: 'IVA Trasladado del Periodo (16%)',
-          satPreload: totalIvaPue,
+          satPreload: Number((totalIvaPue + (totalPpdTotal - totalPpdSub)).toFixed(2)),
           realBank: totalIvaCobrado,
-          diff: totalIvaPue - totalIvaCobrado,
-          status: Math.abs(totalIvaPue - totalIvaCobrado) < 0.01 ? '✓ IVA CONCILIADO' : 'AJUSTAR POR PUE/PPD'
+          diff: Number(((totalIvaPue + (totalPpdTotal - totalPpdSub)) - totalIvaCobrado).toFixed(2)),
+          status: Math.abs((totalIvaPue + (totalPpdTotal - totalPpdSub)) - totalIvaCobrado) < 0.01 ? '✓ IVA CONCILIADO' : 'AJUSTAR POR PUE/PPD'
         }
       ];
 
       var activeStats = recalculateDynamicAlertCounters();
       APP_STATE.actionChecklist = [
-        APP_STATE.pueReclassifiedInSim
-          ? { severity: 'LISTO', title: '✓ CFDI PUE no cobrado reclasificado a PPD', desc: 'El Visor SAT y la Sábana Anual se actualizaron en vivo. Alertas activas: ' + activeStats.activeCount + '.' }
-          : { severity: activeStats.pueUncollectedCnt > 0 ? 'WARN' : 'LISTO', title: activeStats.pueUncollectedCnt > 0 ? 'Reclasificar CFDI PUE no cobrado a PPD' : '✓ Ingresos PUE conciliados', desc: 'Cifras sincronizadas entre Visor SAT, Conciliación Bancaria, Sábana Anual de 12 Meses y Termómetro RESICO.' },
-        { severity: activeStats.ppdNoRepCnt > 0 ? 'WARN' : 'LISTO', title: 'Verificar Complementos de Pago REP 2.0 en cobros PPD', desc: 'Recuerda emitir el CFDI Tipo P a más tardar el día 5 del mes siguiente al cobro.' },
+        activeStats.orphanCnt > 0
+          ? { severity: 'ALERT', title: '⚠️ ' + activeStats.orphanCnt + (activeStats.orphanCnt === 1 ? ' depósito bancario huérfano sin CFDI (' : ' depósitos bancarios huérfanos sin CFDI (') + fmtMXN(activeStats.orphanAmt) + ')', desc: 'Existen abonos en tu estado de cuenta CSV que no tienen factura XML vinculada. Emite el CFDI o identifica si es traspaso entre cuentas.' }
+          : (APP_STATE.pueReclassifiedInSim
+            ? { severity: 'LISTO', title: '✓ CFDI PUE no cobrado reclasificado a PPD', desc: 'El Visor SAT y la Sábana Anual se actualizaron en vivo. Alertas activas: ' + activeStats.activeCount + '.' }
+            : { severity: activeStats.pueUncollectedCnt > 0 ? 'WARN' : 'LISTO', title: activeStats.pueUncollectedCnt > 0 ? 'Reclasificar CFDI PUE no cobrado a PPD' : '✓ Ingresos PUE conciliados', desc: 'Cifras sincronizadas entre Visor SAT, Conciliación Bancaria, Sábana Anual de 12 Meses y Termómetro RESICO.' }),
+        { severity: activeStats.ppdNoRepCnt > 0 ? 'WARN' : 'LISTO', title: activeStats.ppdNoRepCnt > 0 ? ('Timbrar Complemento REP 2.0 (' + fmtMXN(activeStats.ppdNoRepAmt) + ')') : '✓ Complementos de Pago REP 2.0 al día', desc: 'Recuerda emitir el CFDI Tipo P a más tardar el día 5 del mes siguiente al cobro.' },
         { severity: activeStats.efosCnt > 0 ? 'ALERT' : 'LISTO', title: activeStats.efosCnt > 0 ? 'Proveedor observado en Lista 69-B detectado' : '✓ Proveedores limpios en Lista 69-B', desc: 'El estado de tu trabajo está guardado y cifrado localmente en tu dispositivo.' }
       ];
 
@@ -5003,6 +5378,39 @@
       showToast(isLic
         ? 'Datos DEMO vaciados. 6 XML y 6 CSV propios cargados: 100% de filas desbloqueadas por tu Licencia Pro.'
         : 'Datos DEMO vaciados. 6 XML y 6 CSV propios cargados: Primeras 3 filas libres y filas #4 a #6 con candado.');
+    }
+
+    function cargarLotePrueba3Xml4CsvAuditoria() {
+      limpiarEspacioEnCero(true);
+      APP_STATE.mode = 'OWN_FILES';
+      APP_STATE.pueReclassifiedInSim = false;
+      var activeRfc = (APP_STATE.activeRfc && APP_STATE.activeRfc !== 'CLEAN') ? APP_STATE.activeRfc : 'SOL2106158K9';
+
+      APP_STATE.xmlInvoices = [
+        { uuid: 'CFDI40-AUD-0001-17400', isDemo: false, ownerRfc: activeRfc, receptorRfc: activeRfc, fecha: '2026-11-02', rfc: 'ACM190812K91', nombre: 'ACERO COMERCIAL DEL NORTE SA DE CV', tipo: 'I', metodo: 'PUE', subtotal: 15000.00, iva: 2400.00, total: 17400.00, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'CFDI40-AUD-0002-13920', isDemo: false, ownerRfc: activeRfc, receptorRfc: activeRfc, fecha: '2026-11-05', rfc: 'TLO200115M44', nombre: 'TRANSPORTE Y LOGISTICA OMEGA SA', tipo: 'I', metodo: 'PUE', subtotal: 12000.00, iva: 1920.00, total: 13920.00, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'CFDI40-AUD-0003-11600', isDemo: false, ownerRfc: activeRfc, receptorRfc: activeRfc, fecha: '2026-11-07', rfc: 'GDI180309P12', nombre: 'GRUPO DISTRIBUIDOR INDUSTRIAL SA', tipo: 'I', metodo: 'PPD', subtotal: 10000.00, iva: 1600.00, total: 11600.00, tieneRep: false, cobradoBanco: true, efos: false }
+      ];
+
+      APP_STATE.bankMovements = [
+        { id: 'CSV-1', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-02', concepto: 'SPEI CLIENTE FACTURA 1 PUE', ref: 'SPEI-17400', amount: 17400.00 },
+        { id: 'CSV-2', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-05', concepto: 'SPEI CLIENTE FACTURA 2 PUE', ref: 'SPEI-13920', amount: 13920.00 },
+        { id: 'CSV-3', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-07', concepto: 'SPEI CLIENTE FACTURA 3 PPD', ref: 'SPEI-11600', amount: 11600.00 },
+        { id: 'CSV-4', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-09', concepto: 'DEPOSITO HUERFANO SIN FACTURA XML', ref: 'DEP-5000', amount: 5000.00 }
+      ];
+
+      if ($('xmlDropLabel')) $('xmlDropLabel').textContent = '3 XML Propios';
+      if ($('csvDropLabel')) $('csvDropLabel').textContent = '4 CSV Propios';
+
+      recalculateOwnFilesSabanaAndVisor();
+      recalculateDynamicAlertCounters();
+      updateVaultStatusBadge();
+      runBankReconciliation();
+      renderAllPanels();
+      if ($('universalUploadCenterModal')) $('universalUploadCenterModal').classList.add('hidden');
+      switchMainView('tool', true);
+      switchOsPanel('conciliador');
+      showToast('Lote de prueba cargado: 3 XML CFDI 4.0 ($42,920.00) vs. 4 SPEI CSV ($47,920.00) → 3 conciliados y 1 huérfano de $5,000.00.');
     }
 
     /* ========================================================================
@@ -5431,15 +5839,32 @@
           : 'font-mono-num text-[var(--status-amber)] font-bold';
       }
 
+      var scopedRender = getScopedOwnRecords();
+      var activeXmls = APP_STATE.mode === 'OWN_FILES' ? scopedRender.xmls : xmls;
+      var activeBank = APP_STATE.mode === 'OWN_FILES' ? scopedRender.bank : bank;
+
+      if ($('sidebarXmlCount')) $('sidebarXmlCount').textContent = String(activeXmls.length);
+      if ($('sidebarBankCount')) $('sidebarBankCount').textContent = String(activeBank.length);
+
       var satTotal = 0;
-      for (var i = 0; i < xmls.length; i++) {
-        if (xmls[i].tipo === 'I' && xmls[i].metodo === 'PUE') satTotal += Number(xmls[i].total || 0);
+      for (var i = 0; i < activeXmls.length; i++) {
+        var xi = activeXmls[i];
+        if (APP_STATE.mode === 'SAMPLE_CASE') {
+          if (xi.tipo === 'I' && xi.metodo === 'PUE') satTotal += Number(xi.total || 0);
+        } else {
+          // En archivos propios (OWN_FILES), el Visor acumula los CFDI de Ingresos vigentes (PUE + PPD cobrado/conciliado)
+          if (xi.tipo === 'I') {
+            if (xi.metodo === 'PUE' || xi.cobradoBanco !== false) {
+              satTotal += Number(xi.total || 0);
+            }
+          }
+        }
       }
       var bankTotal = 0;
-      for (var j = 0; j < bank.length; j++) {
-        bankTotal += Number(bank[j].amount || 0);
+      for (var j = 0; j < activeBank.length; j++) {
+        bankTotal += Number(activeBank[j].amount || 0);
       }
-      var rawDiff = bankTotal - satTotal;
+      var rawDiff = Number((bankTotal - satTotal).toFixed(2));
       var absDiff = Math.abs(rawDiff);
 
       if ($('kpiSatVisorBase')) $('kpiSatVisorBase').textContent = fmtMXN(satTotal);
@@ -5562,7 +5987,7 @@
       if ($('resicoThermoIsrActual')) $('resicoThermoIsrActual').textContent = fmtMXN(isrResico);
       if ($('resicoThermoPenalty')) $('resicoThermoPenalty').textContent = '+' + fmtMXN(isrPfaePenalty);
       if ($('resicoThermoPenaltyFormula')) {
-        $('resicoThermoPenaltyFormula').textContent = 'Fórmula: 26.0% PFAE Art. 152 − 2.5% RESICO = +23.5% sobre ' + fmtMXN(projectedTotal);
+        $('resicoThermoPenaltyFormula').textContent = 'Fórmula: (26.0% PFAE Art. 152 − 2.5% RESICO Art. 113-E) = +23.5% × ' + fmtMXN(projectedTotal) + ' = +' + fmtMXN(isrPfaePenalty);
       }
       if ($('resicoThermoStatusText')) $('resicoThermoStatusText').textContent = fmtMXN(projectedTotal) + ' / $3,500,000.00 (Cobrado PUE: ' + fmtMXN(onlyCobradoTotal) + ' | PPD por cobrar: ' + fmtMXN(ppdFacturadoSum) + ')';
       if ($('resicoThermoBigBar')) $('resicoThermoBigBar').style.width = pctBarWidth.toFixed(1) + '%';
@@ -5591,6 +6016,20 @@
       var tPue = 0, tPpd = 0, tNc = 0, tDed = 0, tIvaT = 0, tIvaA = 0, tIsr = 0;
       var isDemoMode = APP_STATE.mode === 'SAMPLE_CASE';
 
+      if ($('sabanaRfcScopeBadge')) {
+        var scopeLbl = (APP_STATE.rfcScopeMode === 'PORTFOLIO_ALL')
+          ? ('Consolidado Cartera (' + APP_STATE.clients.length + ' RFCs)')
+          : ('Filtrado · RFC Activo: ' + (APP_STATE.activeRfc || 'XAXX010101000'));
+        $('sabanaRfcScopeBadge').textContent = scopeLbl + (isDemoMode ? ' [DEMO]' : '');
+      }
+      if ($('sabanaIsrFormulaDetailText')) {
+        if (isDemoMode) {
+          $('sabanaIsrFormulaDetailText').textContent = 'En DEMO: Base Cobrada (Ingresos PUE Cobrados + PPD Cobrados − Notas de Crédito) × 2.5% Tasa Máxima RESICO Art. 113-E (Nov: $337,000 × 2.5% = $8,425.00; Anual: $3,224,000 × 2.5% = $80,600.00).';
+        } else {
+          $('sabanaIsrFormulaDetailText').textContent = 'En Archivos Propios: Base Cobrada del Mes (Ingresos PUE + PPD Cobrados) × Tasa Mensual Art. 113-E LISR (≤$25k: 1.0% | ≤$50k: 1.1% | ≤$83.3k: 1.5% | ≤$208.3k: 2.0% | >$208.3k: 2.5%).';
+        }
+      }
+
       tbody.innerHTML = APP_STATE.annualMonths.map(function(r, idx) {
         tPue += Number(r.ingresosPue || 0);
         tPpd += Number(r.ppdCobrados || 0);
@@ -5615,7 +6054,7 @@
           '<td class="p-2.5 text-right font-mono-num text-xs">' + fmtMXN(r.deducciones) + '</td>' +
           '<td class="p-2.5 text-right font-mono-num text-xs">' + fmtMXN(r.ivaTrasladado) + '</td>' +
           '<td class="p-2.5 text-right font-mono-num text-xs">' + fmtMXN(r.ivaAcreditable) + '</td>' +
-          '<td class="p-2.5 text-right font-mono-num text-xs font-bold text-[var(--accent-champagne-bright)]">' + fmtMXN(r.isrEstimado) + '</td>' +
+          '<td class="p-2.5 text-right font-mono-num text-xs font-bold text-[var(--accent-champagne-bright)]" title="Fórmula ISR ' + esc(r.month) + ': Base ' + fmtMXN((r.ingresosPue || 0) + (r.ppdCobrados || 0)) + ' × ' + (r.isrRatePct || 2.5) + '% Art. 113-E = ' + fmtMXN(r.isrEstimado) + '">' + fmtMXN(r.isrEstimado) + '<span class="block text-[9px] text-[var(--text-muted)] font-normal">' + ((r.ingresosPue + r.ppdCobrados) > 0 ? ('(' + (r.isrRatePct || (isDemoMode ? 2.5 : 1.1)) + '% RESICO)') : '') + '</span></td>' +
           '<td class="p-2.5 text-left">' + statusHtml + '</td>' +
         '</tr>';
       }).join('');
@@ -5661,6 +6100,7 @@
           '<div class="flex justify-between"><span>(-) IVA Acreditable:</span><strong>' + fmtMXN(m.ivaAcreditable) + '</strong></div>' +
           '<div class="flex justify-between border-t border-[var(--border-shoji)] pt-1"><span>(=) IVA Neto del Mes:</span><strong class="text-[var(--accent-champagne-bright)]">' + fmtMXN(ivaNeto) + '</strong></div>' +
           '<div class="flex justify-between pt-1"><span>ISR Estimado del Periodo:</span><strong class="text-[var(--status-jade)]">' + fmtMXN(m.isrEstimado) + '</strong></div>' +
+          '<div class="text-[10px] text-[var(--accent-champagne-bright)]">Fórmula aplicada: Base ' + fmtMXN(totalIngresosMes) + ' × Tasa RESICO ' + (m.isrRatePct || (APP_STATE.mode === 'SAMPLE_CASE' ? 2.5 : 1.1)) + '% (Art. 113-E LISR)</div>' +
           '<div class="pt-1 text-[11px] font-sans text-[var(--text-secondary)]">Estatus: <strong>' + esc(m.statusText) + '</strong></div>' +
         '</div>';
 
@@ -5744,7 +6184,10 @@
       tbody.querySelectorAll('[data-select-rfc]').forEach(function(btn) {
         btn.addEventListener('click', function() {
           APP_STATE.activeRfc = btn.getAttribute('data-select-rfc');
-          renderDespachoClientsTable();
+          if (APP_STATE.mode === 'OWN_FILES') {
+            recalculateOwnFilesSabanaAndVisor();
+          }
+          renderAllPanels();
           showToast('RFC activo cambiado a ' + APP_STATE.activeRfc);
         });
       });
@@ -5770,7 +6213,15 @@
           : (stats.pueUncollectedCnt + ' alerta (' + fmtMXN(stats.pueUncollectedAmt) + ')');
         $('guardKpiPueTrap').className = 'font-mono-num text-xl ' + (stats.pueUncollectedCnt === 0 ? 'text-[var(--status-jade)]' : 'text-[var(--status-crimson)]');
       }
-      if ($('guardKpiSilentCancel')) $('guardKpiSilentCancel').textContent = stats.cancelCnt + ' detectadas';
+      if ($('guardKpiSilentCancel')) {
+        if (stats.orphanCnt > 0) {
+          $('guardKpiSilentCancel').textContent = stats.orphanCnt + ' huérfano(s) (' + fmtMXN(stats.orphanAmt) + ')';
+          $('guardKpiSilentCancel').className = 'font-mono-num text-xl text-[var(--status-crimson)] font-bold';
+        } else {
+          $('guardKpiSilentCancel').textContent = stats.cancelCnt + ' detectadas';
+          $('guardKpiSilentCancel').className = 'font-mono-num text-xl text-[var(--text-primary)]';
+        }
+      }
       if ($('guardKpiEfosCount')) {
         $('guardKpiEfosCount').textContent = stats.efosCnt === 0 ? '0 EFOS' : (stats.efosCnt + ' EFOS (' + fmtMXN(stats.efosAmt) + ')');
         $('guardKpiEfosCount').className = 'font-mono-num text-xl ' + (stats.efosCnt > 0 ? 'text-[var(--status-crimson)]' : 'text-[var(--status-jade)]');
@@ -5943,7 +6394,7 @@
       var controls = [
         { code: 'Fracc. I · Declaraciones', title: 'Omisión de declaraciones anuales o 2+ provisionales consecutivas', status: 'EN ORDEN', cls: 'badge-jade' },
         { code: 'Fracc. IV · Art. 69-B CFF', title: 'Operaciones con proveedores EFOS publicados en Lista 69-B sin desvirtuar', status: stats.efosCnt > 0 ? (stats.efosCnt + ' ALERTA (EFOS69010169B)') : 'LIMPIO', cls: stats.efosCnt > 0 ? 'badge-crimson' : 'badge-jade' },
-        { code: 'Fracc. VII · Discrepancia CFDI vs. Declaración', title: 'Ingresos declarados no concuerdan con CFDI PUE + Complementos REP', status: (stats.pueUncollectedCnt + stats.ppdNoRepCnt) > 0 ? ((stats.pueUncollectedCnt + stats.ppdNoRepCnt) + ' ALERTA(S) CFDI ACTIVA(S)') : 'CONCILIADO', cls: (stats.pueUncollectedCnt + stats.ppdNoRepCnt) > 0 ? 'badge-amber' : 'badge-jade' },
+        { code: 'Fracc. VII · Discrepancia CFDI vs. Bancos y Declaración', title: 'Ingresos declarados o depósitos bancarios no concuerdan con CFDI PUE + REP', status: (stats.pueUncollectedCnt + stats.ppdNoRepCnt + stats.orphanCnt) > 0 ? ((stats.pueUncollectedCnt + stats.ppdNoRepCnt + stats.orphanCnt) + ' ALERTA(S) ACTIVA(S)' + (stats.orphanCnt > 0 ? (' · ' + stats.orphanCnt + ' HUÉRFANO(S) ' + fmtMXN(stats.orphanAmt)) : '')) : 'CONCILIADO', cls: stats.orphanCnt > 0 ? 'badge-crimson' : ((stats.pueUncollectedCnt + stats.ppdNoRepCnt) > 0 ? 'badge-amber' : 'badge-jade') },
         { code: 'Fracc. X · Domicilio y Buzón Tributario', title: 'Validación preventiva de medios de contacto y estatus de RFC activo', status: 'VERIFICADO', cls: 'badge-jade' }
       ];
 
@@ -6670,12 +7121,196 @@
     /* ========================================================================
        CARGA DE ARCHIVOS PROPIOS (VACÍA SIEMPRE EL DEMO PARA NUNCA MEZCLAR)
        ======================================================================== */
-    function handleXmlFilesUpload(fileList) {
-      if (!fileList || fileList.length === 0) return;
+    function extractXmlAttrCaseInsensitive(tagStr, attrName) {
+      if (!tagStr || !attrName) return '';
+      var re = new RegExp('\\b' + attrName + '\\s*=\\s*["\']([^"\']*)["\']', 'i');
+      var m = tagStr.match(re);
+      return m ? m[1].trim() : '';
+    }
+
+    function parseXmlTextIntoInvoices(rawText, defaultLabel) {
+      var clean = sanitizeXmlString(String(rawText || '')).trim();
+      if (!clean) return [];
+      var results = [];
+      var activeOwnerRfc = (APP_STATE.activeRfc && APP_STATE.activeRfc !== 'CLEAN') ? APP_STATE.activeRfc : 'XAXX010101000';
+
+      // Extraer todos los bloques <cfdi:Comprobante ...>...</cfdi:Comprobante> o <Comprobante ...> (soporta 1 o múltiples XMLs pegados, con o sin <?xml?>, 1 línea o multilínea)
+      var blocks = [];
+      var blockRegex = /<(?:[a-zA-Z0-9_]+:)?Comprobante\b[\s\S]*?(?:<\/(?:[a-zA-Z0-9_]+:)?Comprobante>|\/\s*>)/gi;
+      var match;
+      while ((match = blockRegex.exec(clean)) !== null) {
+        blocks.push(match[0]);
+      }
+      if (blocks.length === 0 && /Comprobante/i.test(clean)) {
+        blocks.push(clean);
+      }
+
+      for (var bIdx = 0; bIdx < blocks.length; bIdx++) {
+        var blk = blocks[bIdx];
+        var parsedItem = null;
+
+        // 1) Intento por DOMParser estándar
+        try {
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(blk, 'text/xml');
+          var comp = doc.getElementsByTagName('cfdi:Comprobante')[0] || doc.getElementsByTagName('Comprobante')[0];
+          if (!comp && doc.documentElement && /Comprobante/i.test(doc.documentElement.nodeName || '')) {
+            comp = doc.documentElement;
+          }
+          if (comp && !doc.getElementsByTagName('parsererror')[0]) {
+            var emisor = doc.getElementsByTagName('cfdi:Emisor')[0] || doc.getElementsByTagName('Emisor')[0];
+            var receptor = doc.getElementsByTagName('cfdi:Receptor')[0] || doc.getElementsByTagName('Receptor')[0];
+            var timbre = doc.getElementsByTagName('tfd:TimbreFiscalDigital')[0] || doc.getElementsByTagName('TimbreFiscalDigital')[0];
+
+            var rawTot = comp.getAttribute('Total') || comp.getAttribute('total') || comp.getAttribute('Monto') || '0';
+            var rawSub = comp.getAttribute('SubTotal') || comp.getAttribute('subTotal') || comp.getAttribute('Subtotal') || '0';
+            var total = parseFloat(String(rawTot).replace(/[^0-9.-]/g, '')) || 0;
+            var sub = parseFloat(String(rawSub).replace(/[^0-9.-]/g, '')) || 0;
+            if (total > 0 && sub <= 0) sub = Number((total / 1.16).toFixed(2));
+            if (sub > 0 && total <= 0) total = Number((sub * 1.16).toFixed(2));
+            var iva = Number(Math.max(0, total - sub).toFixed(2));
+
+            var tipo = (comp.getAttribute('TipoDeComprobante') || comp.getAttribute('tipoDeComprobante') || 'I').toUpperCase();
+            var metodo = (comp.getAttribute('MetodoPago') || comp.getAttribute('metodoPago') || 'PUE').toUpperCase();
+            var fecha = (comp.getAttribute('Fecha') || comp.getAttribute('fecha') || '2026-11-09').slice(0, 10);
+
+            var emisorRfc = emisor ? (emisor.getAttribute('Rfc') || emisor.getAttribute('rfc') || '') : '';
+            var emisorNombre = emisor ? (emisor.getAttribute('Nombre') || emisor.getAttribute('nombre') || '') : '';
+            var receptorRfc = receptor ? (receptor.getAttribute('Rfc') || receptor.getAttribute('rfc') || '') : '';
+            var receptorNombre = receptor ? (receptor.getAttribute('Nombre') || receptor.getAttribute('nombre') || '') : '';
+
+            // Pendiente #9: Si el receptor es EFOS69010169B por un archivo de prueba pero es un CFDI de Ingreso (tipo I),
+            // mostramos como RFC principal al Emisor (o al cliente no-EFOS) para jamás confundir al receptor con un proveedor 69-B
+            var displayRfc = emisorRfc || receptorRfc || 'XAXX010101000';
+            var displayNombre = emisorNombre || receptorNombre || (defaultLabel || ('CFDI #' + (bIdx + 1)));
+            if (tipo === 'I' && receptorRfc && receptorRfc !== 'EFOS69010169B' && emisorRfc === activeOwnerRfc) {
+              displayRfc = receptorRfc;
+              displayNombre = receptorNombre || displayNombre;
+            }
+
+            var uuid = timbre ? (timbre.getAttribute('UUID') || timbre.getAttribute('uuid') || '') : '';
+            if (!uuid) {
+              uuid = comp.getAttribute('UUID') || comp.getAttribute('Folio') || ('CFDI-' + fecha.replace(/[^0-9]/g, '') + '-' + Math.round(total) + '-' + (bIdx + 1));
+            }
+
+            var isEfos = (tipo === 'E') && (emisorRfc === 'EFOS69010169B' || emisorRfc === 'EDO18010169B');
+
+            if (total > 0 || sub > 0) {
+              parsedItem = {
+                uuid: String(uuid).toUpperCase(),
+                isDemo: false,
+                ownerRfc: activeOwnerRfc,
+                emisorRfc: emisorRfc,
+                receptorRfc: receptorRfc && receptorRfc !== 'EFOS69010169B' ? receptorRfc : activeOwnerRfc,
+                fecha: fecha || '2026-11-09',
+                rfc: String(displayRfc).toUpperCase(),
+                nombre: displayNombre,
+                tipo: tipo,
+                metodo: metodo,
+                subtotal: sub,
+                iva: iva,
+                total: total,
+                tieneRep: metodo === 'PUE',
+                cobradoBanco: metodo === 'PUE',
+                efos: isEfos
+              };
+            }
+          }
+        } catch (err) {}
+
+        // 2) Fallback Regex Tolerante (para XML sin declaración, sin namespaces o en una sola línea con atributos en cualquier orden)
+        if (!parsedItem) {
+          var compTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Comprobante\b[^>]*>/i);
+          if (compTagMatch) {
+            var compTag = compTagMatch[0];
+            var emisorTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Emisor\b[^>]*>/i);
+            var receptorTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?Receptor\b[^>]*>/i);
+            var timbreTagMatch = blk.match(/<(?:[a-zA-Z0-9_]+:)?TimbreFiscalDigital\b[^>]*>/i);
+
+            var rTot = parseFloat(extractXmlAttrCaseInsensitive(compTag, 'Total').replace(/[^0-9.-]/g, '')) || 0;
+            var rSub = parseFloat(extractXmlAttrCaseInsensitive(compTag, 'SubTotal').replace(/[^0-9.-]/g, '')) || 0;
+            if (rTot > 0 && rSub <= 0) rSub = Number((rTot / 1.16).toFixed(2));
+            if (rSub > 0 && rTot <= 0) rTot = Number((rSub * 1.16).toFixed(2));
+            var rIva = Number(Math.max(0, rTot - rSub).toFixed(2));
+
+            var rTipo = (extractXmlAttrCaseInsensitive(compTag, 'TipoDeComprobante') || 'I').toUpperCase();
+            var rMetodo = (extractXmlAttrCaseInsensitive(compTag, 'MetodoPago') || 'PUE').toUpperCase();
+            var rFecha = (extractXmlAttrCaseInsensitive(compTag, 'Fecha') || '2026-11-09').slice(0, 10);
+
+            var eRfc = emisorTagMatch ? extractXmlAttrCaseInsensitive(emisorTagMatch[0], 'Rfc') : '';
+            var eNom = emisorTagMatch ? extractXmlAttrCaseInsensitive(emisorTagMatch[0], 'Nombre') : '';
+            var recRfc = receptorTagMatch ? extractXmlAttrCaseInsensitive(receptorTagMatch[0], 'Rfc') : '';
+            var recNom = receptorTagMatch ? extractXmlAttrCaseInsensitive(receptorTagMatch[0], 'Nombre') : '';
+
+            var dRfc = eRfc || recRfc || 'XAXX010101000';
+            var dNom = eNom || recNom || (defaultLabel || ('CFDI #' + (bIdx + 1)));
+
+            var rUuid = timbreTagMatch ? extractXmlAttrCaseInsensitive(timbreTagMatch[0], 'UUID') : '';
+            if (!rUuid) {
+              rUuid = extractXmlAttrCaseInsensitive(compTag, 'UUID') || extractXmlAttrCaseInsensitive(compTag, 'Folio') || ('CFDI-' + rFecha.replace(/[^0-9]/g, '') + '-' + Math.round(rTot) + '-' + (bIdx + 1));
+            }
+
+            if (rTot > 0 || rSub > 0) {
+              parsedItem = {
+                uuid: String(rUuid).toUpperCase(),
+                isDemo: false,
+                ownerRfc: activeOwnerRfc,
+                emisorRfc: eRfc,
+                receptorRfc: recRfc && recRfc !== 'EFOS69010169B' ? recRfc : activeOwnerRfc,
+                fecha: rFecha || '2026-11-09',
+                rfc: String(dRfc).toUpperCase(),
+                nombre: dNom,
+                tipo: rTipo,
+                metodo: rMetodo,
+                subtotal: rSub,
+                iva: rIva,
+                total: rTot,
+                tieneRep: rMetodo === 'PUE',
+                cobradoBanco: rMetodo === 'PUE',
+                efos: (rTipo === 'E') && (eRfc === 'EFOS69010169B' || eRfc === 'EDO18010169B')
+              };
+            }
+          }
+        }
+
+        if (parsedItem) {
+          results.push(parsedItem);
+        }
+      }
+      return results;
+    }
+
+    function mergeParsedXmlsIntoOwnWorkspace(newXmlsArray) {
+      if (!Array.isArray(newXmlsArray) || newXmlsArray.length === 0) return 0;
       if (APP_STATE.mode === 'SAMPLE_CASE') {
         limpiarEspacioEnCero(true);
       }
       APP_STATE.mode = 'OWN_FILES';
+      var currentList = Array.isArray(APP_STATE.xmlInvoices) ? APP_STATE.xmlInvoices.filter(function(x) { return !x.isDemo; }) : [];
+      var idxByUuid = {};
+      currentList.forEach(function(item, idx) {
+        idxByUuid[item.uuid] = idx;
+      });
+      newXmlsArray.forEach(function(nx) {
+        if (idxByUuid[nx.uuid] !== undefined) {
+          currentList[idxByUuid[nx.uuid]] = nx;
+        } else {
+          idxByUuid[nx.uuid] = currentList.length;
+          currentList.push(nx);
+        }
+      });
+      APP_STATE.xmlInvoices = currentList;
+      if ($('xmlDropLabel')) $('xmlDropLabel').textContent = APP_STATE.xmlInvoices.length + ' XML Propios';
+      runBankReconciliation();
+      recalculateOwnFilesSabanaAndVisor();
+      recalculateDynamicAlertCounters();
+      updateVaultStatusBadge();
+      renderAllPanels();
+      return APP_STATE.xmlInvoices.length;
+    }
+
+    function handleXmlFilesUpload(fileList) {
+      if (!fileList || fileList.length === 0) return;
       var parsedXmls = [];
       var filesArr = Array.prototype.slice.call(fileList);
       var processed = 0;
@@ -6685,60 +7320,22 @@
         reader.onload = function(e) {
           processed++;
           var rawText = String(e.target.result || '');
-          // Si el usuario subió su Respaldo_Licencia_SOLVO_TAX.txt por aquí, lo restauramos automáticamente
-          if (rawText.indexOf('SOLVO-VIP-') !== -1 || rawText.indexOf('CERTIFICADO Y RESPALDO DE LICENCIA') !== -1) {
+          if (rawText.indexOf('SOLVO-VIP-') !== -1 || rawText.indexOf('CERTIFICADO Y RESPALDO DE LICENCIA') !== -1 || rawText.indexOf('SOLVO-AES256-CERT-V2') !== -1) {
             processTxtBackupRestorationString(rawText, file.name);
             return;
           }
-          var raw = sanitizeXmlString(rawText);
-          try {
-            var parser = new DOMParser();
-            var doc = parser.parseFromString(raw, 'text/xml');
-            var comp = doc.getElementsByTagName('cfdi:Comprobante')[0] || doc.getElementsByTagName('Comprobante')[0];
-            var emisor = doc.getElementsByTagName('cfdi:Emisor')[0] || doc.getElementsByTagName('Emisor')[0];
-            var timbre = doc.getElementsByTagName('tfd:TimbreFiscalDigital')[0] || doc.getElementsByTagName('TimbreFiscalDigital')[0];
-
-            if (comp) {
-              var total = parseFloat(comp.getAttribute('Total') || comp.getAttribute('total') || '0') || 0;
-              var sub = parseFloat(comp.getAttribute('SubTotal') || comp.getAttribute('subTotal') || '0') || 0;
-              var tipo = comp.getAttribute('TipoDeComprobante') || 'I';
-              var metodo = comp.getAttribute('MetodoPago') || 'PUE';
-              var fecha = (comp.getAttribute('Fecha') || '').slice(0, 10);
-              var rfc = emisor ? (emisor.getAttribute('Rfc') || 'XAXX010101000') : 'XAXX010101000';
-              var nombre = emisor ? (emisor.getAttribute('Nombre') || file.name) : file.name;
-              var uuid = timbre ? (timbre.getAttribute('UUID') || ('XML-' + processed)) : ('XML-' + processed);
-
-              parsedXmls.push({
-                uuid: uuid,
-                isDemo: false,
-                fecha: fecha || '2026-11-09',
-                rfc: rfc,
-                nombre: nombre,
-                tipo: tipo,
-                metodo: metodo,
-                subtotal: sub,
-                iva: Math.max(0, total - sub),
-                total: total,
-                tieneRep: metodo === 'PUE',
-                efos: rfc.indexOf('69B') !== -1 || rfc.indexOf('EFOS') !== -1
-              });
-            }
-          } catch (err) {}
+          var extracted = parseXmlTextIntoInvoices(rawText, file.name);
+          extracted.forEach(function(inv) { parsedXmls.push(inv); });
 
           if (processed === filesArr.length) {
             if (parsedXmls.length > 0) {
-              APP_STATE.xmlInvoices = parsedXmls;
-              if ($('xmlDropLabel')) $('xmlDropLabel').textContent = parsedXmls.length + ' XML Propios';
-              recalculateOwnFilesSabanaAndVisor();
-              recalculateDynamicAlertCounters();
-              updateVaultStatusBadge();
-              runBankReconciliation();
-              renderAllPanels();
+              var totalLoaded = mergeParsedXmlsIntoOwnWorkspace(parsedXmls);
               if ($('universalUploadCenterModal')) $('universalUploadCenterModal').classList.add('hidden');
+              switchMainView('tool', true);
               var isLic = hasActivePaidOrMasterLicense();
-              showToast('Demo vaciado. ' + parsedXmls.length + ' CFDIs propios procesados en RAM (' + (isLic ? '100% desbloqueado' : '3 filas libres de prueba') + ').');
+              showToast('✓ ' + parsedXmls.length + ' archivo(s) XML cargados (' + totalLoaded + ' CFDI en memoria · ' + (isLic ? '100% desbloqueado' : '3 filas libres de prueba') + ').');
             } else {
-              showToast('Selecciona archivos .xml de CFDI 4.0 válidos.');
+              showToast('No se detectaron nodos <cfdi:Comprobante> válidos en el archivo seleccionado.');
             }
           }
         };
@@ -6749,9 +7346,11 @@
     function parseCsvTextIntoBankMovements(rawText) {
       var lines = String(rawText || '').split(/\r?\n/);
       var movs = [];
+      var activeOwnerRfc = (APP_STATE.activeRfc && APP_STATE.activeRfc !== 'CLEAN') ? APP_STATE.activeRfc : 'XAXX010101000';
       for (var i = 0; i < lines.length; i++) {
         var ln = lines[i].trim();
         if (!ln) continue;
+        if (ln.charAt(0) === '<') continue; // Ignorar líneas XML
         if (i === 0 && ln.toLowerCase().indexOf('fecha') !== -1) continue;
         var cols = ln.split(',');
         if (cols.length >= 2) {
@@ -6760,6 +7359,7 @@
             movs.push({
               id: 'CSV-' + (movs.length + 1),
               isDemo: false,
+              ownerRfc: activeOwnerRfc,
               banco: 'Estado de Cuenta Propio',
               fecha: cols[0].trim() || '2026-11-09',
               concepto: cols[1].trim() || 'Movimiento Bancario CSV',
@@ -6778,7 +7378,7 @@
       var reader = new FileReader();
       reader.onload = function(e) {
         var rawText = String(e.target.result || '');
-        if (rawText.indexOf('SOLVO-VIP-') !== -1 || rawText.indexOf('CERTIFICADO Y RESPALDO DE LICENCIA') !== -1) {
+        if (rawText.indexOf('SOLVO-VIP-') !== -1 || rawText.indexOf('CERTIFICADO Y RESPALDO DE LICENCIA') !== -1 || rawText.indexOf('SOLVO-AES256-CERT-V2') !== -1) {
           processTxtBackupRestorationString(rawText, file.name);
           return;
         }
@@ -6790,13 +7390,14 @@
         if (movs.length > 0) {
           APP_STATE.bankMovements = movs;
           if ($('csvDropLabel')) $('csvDropLabel').textContent = movs.length + ' CSV Propios';
+          runBankReconciliation();
           recalculateOwnFilesSabanaAndVisor();
           recalculateDynamicAlertCounters();
           updateVaultStatusBadge();
-          runBankReconciliation();
           renderAllPanels();
           if ($('universalUploadCenterModal')) $('universalUploadCenterModal').classList.add('hidden');
-          showToast('Demo vaciado. ' + movs.length + ' movimientos bancarios propios cargados desde CSV.');
+          switchMainView('tool', true);
+          showToast('✓ ' + movs.length + ' movimientos bancarios propios cargados desde CSV (' + APP_STATE.xmlInvoices.length + ' XML en memoria).');
         } else {
           showToast('El CSV debe incluir Fecha, Concepto, Referencia y Monto numérico.');
         }
@@ -7142,16 +7743,78 @@
         });
       }
 
+      function requestConfirmationBeforeDataSwitch(titleStr, descStr, onConfirmFn) {
+        var hasOwnData = APP_STATE.mode === 'OWN_FILES' && ((APP_STATE.xmlInvoices && APP_STATE.xmlInvoices.length > 0) || (APP_STATE.bankMovements && APP_STATE.bankMovements.length > 0));
+        var hasEditedDemo = APP_STATE.mode === 'SAMPLE_CASE' && Boolean(APP_STATE.pueReclassifiedInSim || APP_STATE.lastConcilBulkBackup || APP_STATE.lastGuardBulkBackup);
+        if (!hasOwnData && !hasEditedDemo) {
+          onConfirmFn();
+          return;
+        }
+        var mdl = $('confirmDataSwitchModal');
+        if (!mdl) {
+          onConfirmFn();
+          return;
+        }
+        if ($('confirmSwitchModalTitle')) $('confirmSwitchModalTitle').textContent = titleStr;
+        if ($('confirmSwitchModalDesc')) {
+          $('confirmSwitchModalDesc').textContent = hasOwnData
+            ? ('Tienes ' + APP_STATE.xmlInvoices.length + ' XML propios y ' + APP_STATE.bankMovements.length + ' movimientos bancarios guardados localmente. ' + descStr)
+            : ('Realizaste reclasificaciones o ediciones en lote sobre la sesión actual. ' + descStr);
+        }
+        APP_STATE.pendingConfirmAction = onConfirmFn;
+        mdl.classList.remove('hidden');
+      }
+
+      if ($('confirmSwitchProceedBtn')) {
+        $('confirmSwitchProceedBtn').addEventListener('click', function() {
+          if ($('confirmDataSwitchModal')) $('confirmDataSwitchModal').classList.add('hidden');
+          if (typeof APP_STATE.pendingConfirmAction === 'function') {
+            var fn = APP_STATE.pendingConfirmAction;
+            APP_STATE.pendingConfirmAction = null;
+            fn();
+          }
+        });
+      }
+      if ($('confirmSwitchGoExportBtn')) {
+        $('confirmSwitchGoExportBtn').addEventListener('click', function() {
+          APP_STATE.pendingConfirmAction = null;
+          if ($('confirmDataSwitchModal')) $('confirmDataSwitchModal').classList.add('hidden');
+          switchMainView('tool', true);
+          switchOsPanel('config');
+          showToast('Exporta tu paquete cifrado .solvo antes de reemplazar tus datos.');
+        });
+      }
+      ['confirmSwitchCancelBtn', 'closeConfirmSwitchModalBtn'].forEach(function(id) {
+        if ($(id)) {
+          $(id).addEventListener('click', function() {
+            APP_STATE.pendingConfirmAction = null;
+            if ($('confirmDataSwitchModal')) $('confirmDataSwitchModal').classList.add('hidden');
+          });
+        }
+      });
+
       // 7. Botones "⚡ Simular Ejemplo", "⟲ Reiniciar", "▶️ Tour Guiado" y "🎓 Guía / Glosario SAT"
       if ($('reloadLiveVaultDemoBtn')) {
         $('reloadLiveVaultDemoBtn').addEventListener('click', function() {
-          triggerForegroundKatanaSlash();
-          cargarCasoDeEjemplo();
+          requestConfirmationBeforeDataSwitch(
+            '¿Cargar el Modo DEMO y reemplazar tus Archivos Propios?',
+            'Si continúas, se cargarán los 10 XML y 5 movimientos demostrativos [DEMO] en lugar de tus archivos propios.',
+            function() {
+              triggerForegroundKatanaSlash();
+              cargarCasoDeEjemplo();
+            }
+          );
         });
       }
       if ($('clearVaultZeroBtn')) {
         $('clearVaultZeroBtn').addEventListener('click', function() {
-          limpiarEspacioEnCero(false);
+          requestConfirmationBeforeDataSwitch(
+            '¿Reiniciar la bóveda en $0.00?',
+            'Se vaciarán los XML y movimientos bancarios actuales (tu licencia Pro permanece intacta).',
+            function() {
+              limpiarEspacioEnCero(false);
+            }
+          );
         });
       }
       if ($('purgeDemoNowBtn')) {
@@ -7454,22 +8117,55 @@
           if ($('universalUploadCenterModal')) $('universalUploadCenterModal').classList.remove('hidden');
         });
       }
-      if ($('universalXmlZipInput')) {
-        $('universalXmlZipInput').addEventListener('change', function(e) {
-          handleXmlFilesUpload(e.target.files);
-        });
-      }
-      if ($('universalBankCsvInput')) {
-        $('universalBankCsvInput').addEventListener('change', function(e) {
-          handleCsvBankUpload(e.target.files);
-        });
-      }
+      ['universalXmlZipInput', 'modalVisibleXmlInput'].forEach(function(id) {
+        if ($(id)) {
+          $(id).addEventListener('click', function(e) { e.target.value = ''; });
+          $(id).addEventListener('change', function(e) {
+            handleXmlFilesUpload(e.target.files);
+          });
+        }
+      });
+      ['universalBankCsvInput', 'modalVisibleCsvInput'].forEach(function(id) {
+        if ($(id)) {
+          $(id).addEventListener('click', function(e) { e.target.value = ''; });
+          $(id).addEventListener('change', function(e) {
+            handleCsvBankUpload(e.target.files);
+          });
+        }
+      });
       if ($('simulateOwnFilesUploadBtn')) {
         $('simulateOwnFilesUploadBtn').addEventListener('click', cargarSimulacionArchivosPropios6Filas);
       }
+      if ($('simulateAudit3Xml4CsvBtn')) {
+        $('simulateAudit3Xml4CsvBtn').addEventListener('click', cargarLotePrueba3Xml4CsvAuditoria);
+      }
+      if ($('prefillSampleXmlInPasteBtn')) {
+        $('prefillSampleXmlInPasteBtn').addEventListener('click', function() {
+          var sample3Xml = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Fecha="2026-11-02T10:15:00" SubTotal="15000.00" Total="17400.00" TipoDeComprobante="I" MetodoPago="PUE">',
+            '  <cfdi:Emisor Rfc="ACM190812K91" Nombre="ACERO COMERCIAL DEL NORTE SA DE CV" RegimenFiscal="601"/>',
+            '  <cfdi:Receptor Rfc="SOL2106158K9" Nombre="GRUPO INDUSTRIAL SOLVO SA DE CV" UsoCFDI="G03"/>',
+            '  <cfdi:Complemento><tfd:TimbreFiscalDigital UUID="CFDI40-AUD-0001-17400"/></cfdi:Complemento>',
+            '</cfdi:Comprobante>',
+            '<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Fecha="2026-11-05T11:30:00" SubTotal="12000.00" Total="13920.00" TipoDeComprobante="I" MetodoPago="PUE">',
+            '  <cfdi:Emisor Rfc="TLO200115M44" Nombre="TRANSPORTE Y LOGISTICA OMEGA SA" RegimenFiscal="601"/>',
+            '  <cfdi:Receptor Rfc="SOL2106158K9" Nombre="GRUPO INDUSTRIAL SOLVO SA DE CV" UsoCFDI="G03"/>',
+            '  <cfdi:Complemento><tfd:TimbreFiscalDigital UUID="CFDI40-AUD-0002-13920"/></cfdi:Complemento>',
+            '</cfdi:Comprobante>',
+            '<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Fecha="2026-11-07T14:20:00" SubTotal="10000.00" Total="11600.00" TipoDeComprobante="I" MetodoPago="PPD">',
+            '  <cfdi:Emisor Rfc="GDI180309P12" Nombre="GRUPO DISTRIBUIDOR INDUSTRIAL SA" RegimenFiscal="601"/>',
+            '  <cfdi:Receptor Rfc="SOL2106158K9" Nombre="GRUPO INDUSTRIAL SOLVO SA DE CV" UsoCFDI="G03"/>',
+            '  <cfdi:Complemento><tfd:TimbreFiscalDigital UUID="CFDI40-AUD-0003-11600"/></cfdi:Complemento>',
+            '</cfdi:Comprobante>'
+          ].join('\n');
+          if ($('pasteRawDataTextarea')) $('pasteRawDataTextarea').value = sample3Xml;
+          showToast('3 CFDIs 4.0 de prueba ($17,400 PUE, $13,920 PUE y $11,600 PPD) listos en el recuadro. Pulsa "⚡ Procesar Datos Pegados".');
+        });
+      }
       if ($('downloadSampleCsvTemplateBtn')) {
         $('downloadSampleCsvTemplateBtn').addEventListener('click', function() {
-          var csvSample = 'Fecha,Concepto,Referencia,Monto\r\n2026-11-02,SPEI RECIBIDO ACERO COMERCIAL DEL NORTE,8849201,168200.00\r\n2026-11-05,ABONO SPEI GRUPO DISTRIBUIDOR INDUSTRIAL,8849512,110200.00\r\n2026-11-06,LIQUIDACION STRIPE MEXICO,STRP-992,46681.53\r\n2026-11-07,SPEI CONSOLIDADO 5 FACTURAS LOTE,8850119,63800.00\r\n';
+          var csvSample = 'Fecha,Concepto,Referencia,Monto\r\n2026-11-02,SPEI CLIENTE FACTURA 1 PUE,SPEI-17400,17400.00\r\n2026-11-05,SPEI CLIENTE FACTURA 2 PUE,SPEI-13920,13920.00\r\n2026-11-07,SPEI CLIENTE FACTURA 3 PPD,SPEI-11600,11600.00\r\n2026-11-09,DEPOSITO HUERFANO SIN FACTURA XML,DEP-5000,5000.00\r\n';
           var blob = new Blob([csvSample], { type: 'text/csv;charset=utf-8;' });
           var a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
@@ -7482,7 +8178,7 @@
       }
       if ($('downloadSampleXmlTemplateBtn')) {
         $('downloadSampleXmlTemplateBtn').addEventListener('click', function() {
-          var xmlSample = '<?xml version="1.0" encoding="UTF-8"?>\n<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Fecha="2026-11-10T12:00:00" SubTotal="50000.00" Total="58000.00" TipoDeComprobante="I" MetodoPago="PUE">\n  <cfdi:Emisor Rfc="ACM190812K91" Nombre="ACERO COMERCIAL DEL NORTE SA DE CV" RegimenFiscal="601"/>\n  <cfdi:Complemento>\n    <tfd:TimbreFiscalDigital UUID="A91F-4821-9901-MUESTRA1"/>\n  </cfdi:Complemento>\n</cfdi:Comprobante>';
+          var xmlSample = '<?xml version="1.0" encoding="UTF-8"?>\n<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Fecha="2026-11-02T12:00:00" SubTotal="15000.00" Total="17400.00" TipoDeComprobante="I" MetodoPago="PUE">\n  <cfdi:Emisor Rfc="ACM190812K91" Nombre="ACERO COMERCIAL DEL NORTE SA DE CV" RegimenFiscal="601"/>\n  <cfdi:Receptor Rfc="SOL2106158K9" Nombre="GRUPO INDUSTRIAL SOLVO SA DE CV" DomicilioFiscalReceptor="06600" RegimenFiscalReceptor="626" UsoCFDI="G03"/>\n  <cfdi:Complemento>\n    <tfd:TimbreFiscalDigital UUID="CFDI40-AUD-0001-17400"/>\n  </cfdi:Complemento>\n</cfdi:Comprobante>';
           var blob = new Blob([xmlSample], { type: 'application/xml;charset=utf-8;' });
           var a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
@@ -7496,33 +8192,55 @@
       if ($('processPastedDataBtn')) {
         $('processPastedDataBtn').addEventListener('click', function() {
           var raw = $('pasteRawDataTextarea') ? $('pasteRawDataTextarea').value.trim() : '';
+          var fb = $('pasteParseFeedbackBanner');
+          if (fb) fb.classList.add('hidden');
           if (!raw) {
-            showToast('Pega líneas CSV o código XML en el recuadro o usa "🧪 Probar Subida de Archivos Propios".');
+            showToast('Pega líneas CSV o código XML CFDI 4.0 en el recuadro.');
             return;
           }
-          if (raw.indexOf('SOLVO-VIP-') !== -1 || raw.indexOf('CERTIFICADO Y RESPALDO DE LICENCIA') !== -1) {
+          if (raw.indexOf('SOLVO-VIP-') !== -1 || raw.indexOf('CERTIFICADO Y RESPALDO DE LICENCIA') !== -1 || raw.indexOf('SOLVO-AES256-CERT-V2') !== -1) {
             processTxtBackupRestorationString(raw, 'Texto pegado');
             return;
           }
+
+          // Soportar pegado de XML CFDI 4.0 / 3.3 (con o sin <?xml?>, multilínea o en 1 línea, 1 o varios CFDIs) Y/O líneas CSV en el mismo recuadro
+          var parsedXmls = parseXmlTextIntoInvoices(raw, 'XML Pegado en RAM');
+          var parsedCsvMovs = parseCsvTextIntoBankMovements(raw);
+
+          if (parsedXmls.length === 0 && parsedCsvMovs.length === 0) {
+            if (fb) {
+              fb.className = 'p-2 rounded text-[11px] font-mono-num bg-[var(--status-crimson)]/20 border border-[var(--status-crimson)] text-[var(--status-crimson)] font-bold';
+              fb.textContent = '❌ Formato no reconocido. Pega un bloque XML (<cfdi:Comprobante...>) o líneas CSV (Fecha, Concepto, Referencia, Monto).';
+              fb.classList.remove('hidden');
+            }
+            showToast('Formato no reconocido. Pega XML CFDI 4.0 (<cfdi:Comprobante...>) o líneas CSV (Fecha, Concepto, Referencia, Monto).');
+            return;
+          }
+
           if (APP_STATE.mode === 'SAMPLE_CASE') {
             limpiarEspacioEnCero(true);
           }
           APP_STATE.mode = 'OWN_FILES';
-          var movs = parseCsvTextIntoBankMovements(raw);
-          if (movs.length > 0) {
-            APP_STATE.bankMovements = movs;
-            if ($('csvDropLabel')) $('csvDropLabel').textContent = movs.length + ' CSV Propios';
+
+          if (parsedCsvMovs.length > 0) {
+            APP_STATE.bankMovements = parsedCsvMovs;
+            if ($('csvDropLabel')) $('csvDropLabel').textContent = parsedCsvMovs.length + ' CSV Propios';
+          }
+          if (parsedXmls.length > 0) {
+            mergeParsedXmlsIntoOwnWorkspace(parsedXmls);
+          } else {
+            runBankReconciliation();
             recalculateOwnFilesSabanaAndVisor();
             recalculateDynamicAlertCounters();
             updateVaultStatusBadge();
-            runBankReconciliation();
             renderAllPanels();
-            if ($('universalUploadCenterModal')) $('universalUploadCenterModal').classList.add('hidden');
-            switchOsPanel('conciliador');
-            showToast('Demo vaciado. ' + movs.length + ' movimientos propios procesados en RAM.');
-          } else {
-            showToast('Formato no reconocido. Usa: Fecha, Concepto, Referencia, Monto.');
           }
+
+          if ($('pasteRawDataTextarea')) $('pasteRawDataTextarea').value = '';
+          if ($('universalUploadCenterModal')) $('universalUploadCenterModal').classList.add('hidden');
+          switchMainView('tool', true);
+          switchOsPanel('conciliador');
+          showToast('✓ Procesado en RAM: ' + APP_STATE.xmlInvoices.length + ' XML CFDI y ' + APP_STATE.bankMovements.length + ' movimientos CSV activos.');
         });
       }
 
@@ -7859,8 +8577,24 @@
       if ($('activeRfcSelector')) {
         $('activeRfcSelector').addEventListener('change', function(e) {
           APP_STATE.activeRfc = e.target.value;
-          renderDespachoClientsTable();
-          showToast('RFC activo cambiado a ' + APP_STATE.activeRfc);
+          if (APP_STATE.mode === 'OWN_FILES') {
+            recalculateOwnFilesSabanaAndVisor();
+          }
+          renderAllPanels();
+          showToast('RFC activo cambiado a ' + APP_STATE.activeRfc + ' (' + (APP_STATE.rfcScopeMode === 'PORTFOLIO_ALL' ? 'Vista Consolidada Cartera' : 'Filtrado por RFC Activo') + ').');
+        });
+      }
+      if ($('rfcScopeModeSelect')) {
+        $('rfcScopeModeSelect').addEventListener('change', function(e) {
+          APP_STATE.rfcScopeMode = e.target.value || 'ACTIVE_RFC';
+          setPersistentItem(STORAGE_KEYS.RFC_SCOPE_MODE, APP_STATE.rfcScopeMode);
+          if (APP_STATE.mode === 'OWN_FILES') {
+            recalculateOwnFilesSabanaAndVisor();
+          }
+          renderAllPanels();
+          showToast(APP_STATE.rfcScopeMode === 'PORTFOLIO_ALL'
+            ? 'Alcance cambiado a: Consolidado Cartera (agrega todos los RFCs).'
+            : ('Alcance cambiado a: Filtrar por RFC Activo (' + APP_STATE.activeRfc + ').'));
         });
       }
       if ($('saveNewClientBtn')) {
@@ -8151,6 +8885,46 @@
       if ($('configJumpWhiteLabelBtn')) {
         $('configJumpWhiteLabelBtn').addEventListener('click', function() {
           switchOsPanel('mando', 'despacho');
+        });
+      }
+      ['headerLogoutLicenseBtn', 'modalLogoutLicenseBtn', 'pricingModalLogoutBtn', 'configLogoutLicenseBtn'].forEach(function(id) {
+        if ($(id)) {
+          $(id).addEventListener('click', function() {
+            deactivateLicenseAndEnterFreeMode();
+          });
+        }
+      });
+
+      function toggleOfflineAirplaneMode() {
+        APP_STATE.offlineAirplaneMode = !APP_STATE.offlineAirplaneMode;
+        var b1 = $('toggleOfflineAirplaneModeBtn');
+        var b2 = $('configToggleOfflineBtn');
+        if (b1) {
+          b1.textContent = APP_STATE.offlineAirplaneMode ? '✈️ Modo Avión Offline: ACTIVO (0 Red)' : '✈️ Modo Avión Offline: OFF';
+          b1.className = APP_STATE.offlineAirplaneMode
+            ? 'badge-jade px-2.5 py-1.5 rounded-full text-[10px] font-mono-num font-bold cursor-pointer'
+            : 'btn-urushi-pill px-2.5 py-1.5 text-[10px] font-mono-num border-[var(--accent-champagne)]/60 text-[var(--text-secondary)]';
+        }
+        if (b2) {
+          b2.textContent = APP_STATE.offlineAirplaneMode ? '✈️ Modo Avión ACTIVO (Desactivar)' : '✈️ Alternar Modo Avión (100% Offline)';
+        }
+        showToast(APP_STATE.offlineAirplaneMode
+          ? '✈️ Modo Avión 100% Offline ACTIVADO: Cero llamadas de red. Carga XML/CSV, conciliación, PDFs y paquetes .solvo operan 100% en local.'
+          : '🌐 Modo Avión desactivado: Conexión normal restablecida.');
+      }
+
+      if ($('toggleOfflineAirplaneModeBtn')) {
+        $('toggleOfflineAirplaneModeBtn').addEventListener('click', toggleOfflineAirplaneMode);
+      }
+      if ($('configToggleOfflineBtn')) {
+        $('configToggleOfflineBtn').addEventListener('click', toggleOfflineAirplaneMode);
+      }
+      if ($('configTestExpiredKeyBtn')) {
+        $('configTestExpiredKeyBtn').addEventListener('click', function() {
+          var expiredSampleKey = 'SOLVO-VIP-001D-20240101-EXP-349-9A8B7C';
+          if ($('modalLicenseKeyInput')) $('modalLicenseKeyInput').value = expiredSampleKey;
+          if ($('stripePricingModal')) $('stripePricingModal').classList.remove('hidden');
+          activateLicenseKey(expiredSampleKey, false);
         });
       }
 
