@@ -1925,15 +1925,26 @@
                 <span class="text-[10px] text-[var(--text-muted)] block mt-0.5">Días 25 al 31 sin depósito</span>
               </div>
               <div class="shoji-panel p-3.5">
-                <span class="text-[10px] text-[var(--text-secondary)] block">FACTURAS CANCELADAS</span>
-                <strong id="guardKpiSilentCancel" class="font-mono-num text-xl text-[var(--accent-sakura)]">0 detectadas</strong>
-                <span class="text-[10px] text-[var(--text-muted)] block mt-0.5">Revisión de vigencia CFDI</span>
+                <span id="guardKpiThirdCardTitle" class="text-[10px] text-[var(--text-secondary)] block">HUÉRFANOS SIN CFDI</span>
+                <strong id="guardKpiSilentCancel" class="font-mono-num text-xl text-[var(--accent-sakura)]">0 huérfanos ($0.00)</strong>
+                <span id="guardKpiThirdCardSub" class="text-[10px] text-[var(--text-muted)] block mt-0.5">Depósitos bancarios sin XML</span>
               </div>
               <div class="shoji-panel p-3.5">
                 <span class="text-[10px] text-[var(--text-secondary)] block">PROVEEDORES LISTA 69-B</span>
                 <strong id="guardKpiEfosCount" class="font-mono-num text-xl text-[var(--status-jade)]">0 EFOS</strong>
                 <span class="text-[10px] text-[var(--text-muted)] block mt-0.5">Cruce preventivo en RAM</span>
               </div>
+            </div>
+
+            <!-- BANNER DE PORCENTAJE DE RIESGO FISCAL CON FÓRMULA VISIBLE EN GUARDIÁN (PENDIENTE #4) -->
+            <div id="guardianRiskFormulaBanner" class="shoji-panel p-3.5 border border-[var(--accent-champagne)]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono-num">
+              <div>
+                <strong class="text-[var(--accent-champagne-bright)]">📊 PORCENTAJE DE RIESGO FISCAL DETECTADO: <span id="guardianRiskPctValue" class="text-[var(--status-amber)]">0.0%</span></strong>
+                <span id="guardianRiskFormulaText" class="text-[11px] text-[var(--text-secondary)] block mt-0.5">
+                  Fórmula: Monto en Hallazgos Activos ($0.00) ÷ Base Operada del Periodo ($0.00) × 100 = 0.0%
+                </span>
+              </div>
+              <span id="guardianRiskResicoPenaltyBadge" class="badge-makie px-2.5 py-1 rounded-full text-[10px] shrink-0">Sobrecosto Salida RESICO: +23.5% (26.0% − 2.5%)</span>
             </div>
 
             <div class="urushi-surface overflow-hidden">
@@ -2276,7 +2287,7 @@
                 <span class="badge-makie px-2.5 py-0.5 rounded-full text-[10px] font-mono-num font-bold">PASO 1 EN EQUIPO ORIGEN (OFICINA / PC 1)</span>
                 <h3 class="text-base font-bold mt-1.5">Exportar paquete cifrado (<code class="font-mono-num text-[var(--accent-champagne-bright)]">.solvo</code>)</h3>
                 <p class="text-xs text-[var(--text-secondary)] mt-0.5">
-                  Empaqueta tu cartera de RFCs, tus XML y movimientos bancarios con sus reclasificaciones, ediciones masivas, cuentas asignadas, Marca Blanca y Sábana Anual. <strong>No incluye tu licencia ni tu e.firma.</strong> Funciona en modo avión (sin internet).
+                  Empaqueta tu cartera de RFCs, tus XML y movimientos bancarios con sus reclasificaciones, ediciones masivas, cuentas asignadas, Marca Blanca y Sábana Anual. <strong>No incluye tu licencia ni tu e.firma.</strong> Funciona 100% sin conexión a internet.
                 </p>
               </div>
 
@@ -2978,7 +2989,7 @@
         </div>
         <div class="shoji-panel p-3.5 space-y-1 sm:col-span-2 border border-[var(--accent-champagne)]/60">
           <strong class="text-[var(--accent-champagne-bright)] font-mono-num">¿Sin internet? Sigues trabajando. ¿Otro equipo? Te llevas tu paquete.</strong>
-          <p class="text-[11px] text-[var(--text-secondary)]">SOLVO TAX trabaja completo en tu equipo, también sin conexión (puedes comprobarlo activando el modo avión). Para seguir en otro equipo, exporta tu paquete cifrado (<code class="font-mono-num">.solvo</code>), llévalo como quieras (USB, correo, WhatsApp) e impórtalo allá. Nada pasa por un servidor.</p>
+          <p class="text-[11px] text-[var(--text-secondary)]">SOLVO TAX trabaja completo en tu equipo, también sin conexión. Para seguir en otro equipo, exporta tu paquete cifrado (<code class="font-mono-num">.solvo</code>), llévalo como quieras (USB, correo, WhatsApp) e impórtalo allá. Nada pasa por un servidor.</p>
         </div>
       </div>
     </div>
@@ -4577,7 +4588,8 @@
           if (bank.length > 0) {
             xmls[k].cobradoBanco = Boolean(used[xmls[k].uuid]);
           } else {
-            xmls[k].cobradoBanco = (xmls[k].metodo === 'PUE');
+            // Pendiente #6b (9ª Auditoría): Sin CSV bancario cargado (bancos en $0.00), no dar por cobrado en bancos
+            xmls[k].cobradoBanco = null;
           }
         }
       }
@@ -4653,18 +4665,38 @@
       }
 
       var activeCount = activeList.length;
+      var totalAlertAmount = Number((pueUncollectedAmt + ppdNoRepAmt + efosAmt + orphanAmt).toFixed(2));
+
+      var scopedRisk = getScopedOwnRecords();
+      var riskXmls = APP_STATE.mode === 'OWN_FILES' ? scopedRisk.xmls : (APP_STATE.xmlInvoices || []);
+      var riskBank = APP_STATE.mode === 'OWN_FILES' ? scopedRisk.bank : (APP_STATE.bankMovements || []);
+      var sumXmlTotal = 0;
+      for (var rx = 0; rx < riskXmls.length; rx++) {
+        if (riskXmls[rx].tipo === 'I') sumXmlTotal += Number(riskXmls[rx].total || 0);
+      }
+      var sumBankTotal = 0;
+      for (var rb = 0; rb < riskBank.length; rb++) {
+        sumBankTotal += Number(riskBank[rb].amount || 0);
+      }
+      var baseOperadaPeriodo = Number(Math.max(sumXmlTotal, sumBankTotal).toFixed(2));
+      var riskPct = baseOperadaPeriodo > 0
+        ? Number(Math.min(100, (totalAlertAmount / baseOperadaPeriodo) * 100).toFixed(1))
+        : (totalAlertAmount > 0 ? 100.0 : 0.0);
+      var riskFormulaStr = baseOperadaPeriodo > 0
+        ? ('Riesgo Fiscal: ' + riskPct.toFixed(1) + '% (Fórmula: Hallazgos Activos ' + fmtMXN(totalAlertAmount) + ' ÷ Base Operada ' + fmtMXN(baseOperadaPeriodo) + ' × 100 = ' + riskPct.toFixed(1) + '%)')
+        : 'Riesgo Fiscal: 0.0% (Sin operaciones ni hallazgos activos en el periodo)';
 
       if (APP_STATE.mode === 'CLEAN_ZERO') {
         APP_STATE.csdStatus = {
-          badge: 'SIN RIESGO',
-          title: 'Sin Alertas Activas',
+          badge: 'RIESGO 0.0%',
+          title: 'Sin Alertas Activas (0.0%)',
           sub: 'Sube tus XML para auditar Art. 17-H Bis'
         };
       } else if (activeCount === 0) {
         APP_STATE.csdStatus = {
-          badge: '0 ALERTAS ACTIVAS',
-          title: 'Sellos CSD Sin Riesgo Activo',
-          sub: 'Todas las alertas del periodo fueron reclasificadas o resueltas.'
+          badge: '0 ALERTAS · RIESGO 0.0%',
+          title: 'Sellos CSD Sin Riesgo Activo (0.0%)',
+          sub: 'Todas las alertas del periodo fueron reclasificadas o resueltas (' + fmtMXN(0) + ' ÷ ' + fmtMXN(baseOperadaPeriodo) + ' = 0.0%).'
         };
       } else {
         var parts = [];
@@ -4673,9 +4705,9 @@
         if (efosCnt > 0) parts.push(efosCnt + ' RFC 69-B (' + fmtMXN(efosAmt) + ')');
         if (orphanCnt > 0) parts.push(orphanCnt + (orphanCnt === 1 ? ' huérfano sin CFDI (' : ' huérfanos sin CFDI (') + fmtMXN(orphanAmt) + ')');
         APP_STATE.csdStatus = {
-          badge: activeCount + (activeCount === 1 ? ' ALERTA DETECTADA' : ' ALERTAS DETECTADAS'),
-          title: 'Revisión Preventiva Art. 17-H Bis (' + activeCount + ' activa' + (activeCount === 1 ? '' : 's') + ')',
-          sub: parts.join(' + ') + '.'
+          badge: activeCount + (activeCount === 1 ? ' ALERTA' : ' ALERTAS') + ' · RIESGO ' + riskPct.toFixed(1) + '%',
+          title: 'Riesgo ' + riskPct.toFixed(1) + '% (' + activeCount + ' alerta' + (activeCount === 1 ? '' : 's') + ')',
+          sub: parts.join(' + ') + ' · [' + fmtMXN(totalAlertAmount) + ' ÷ ' + fmtMXN(baseOperadaPeriodo) + ' = ' + riskPct.toFixed(1) + '%].'
         };
       }
 
@@ -4691,6 +4723,10 @@
 
       return {
         activeCount: activeCount,
+        totalAlertAmount: totalAlertAmount,
+        baseOperadaPeriodo: baseOperadaPeriodo,
+        riskPct: riskPct,
+        riskFormulaStr: riskFormulaStr,
         pueUncollectedCnt: pueUncollectedCnt,
         pueUncollectedAmt: pueUncollectedAmt,
         ppdNoRepCnt: ppdNoRepCnt,
@@ -4788,16 +4824,16 @@
       resetUploadButtonsLabelsToClean();
 
       APP_STATE.xmlInvoices = [
-        { uuid: 'A91F-4821-9901-SOLVO1', isDemo: true, fecha: '2026-11-02', rfc: 'ACM190812K91', nombre: 'ACERO COMERCIAL DEL NORTE SA DE CV', tipo: 'I', metodo: 'PUE', subtotal: 145000, iva: 23200, total: 168200, tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'B83C-1104-7721-SOLVO2', isDemo: true, fecha: '2026-11-28', rfc: 'TLO200115M44', nombre: 'TRANSPORTE Y LOGISTICA OMEGA SA', tipo: 'I', metodo: 'PUE', subtotal: 68000, iva: 10880, total: 78880, tieneRep: false, cobradoBanco: false, efos: false },
-        { uuid: 'C74D-5520-3319-SOLVO3', isDemo: true, fecha: '2026-11-05', rfc: 'GDI180309P12', nombre: 'GRUPO DISTRIBUIDOR INDUSTRIAL', tipo: 'I', metodo: 'PPD', subtotal: 95000, iva: 15200, total: 110200, tieneRep: false, cobradoBanco: true, efos: false },
-        { uuid: 'D12E-8831-1044-SOLVO4', isDemo: true, fecha: '2026-11-06', rfc: 'ECOM210901S88', nombre: 'VENTA E-COMMERCE STRIPE MEXICO', tipo: 'I', metodo: 'PUE', subtotal: 42000, iva: 6720, total: 48720, tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'E55A-9012-4410-SOLVO5', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', nombre: 'CORPORATIVO LOTE (FACTURA 1 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 15000, iva: 2400, total: 17400, tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'F66B-9013-4411-SOLVO6', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', nombre: 'CORPORATIVO LOTE (FACTURA 2 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 12000, iva: 1920, total: 13920, tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'H77C-9014-4412-SOLVO8', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', nombre: 'CORPORATIVO LOTE (FACTURA 3 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 10000, iva: 1600, total: 11600, tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'J88D-9015-4413-SOLVO9', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', nombre: 'CORPORATIVO LOTE (FACTURA 4 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 10000, iva: 1600, total: 11600, tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'K99E-9016-4414-SOLV10', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', nombre: 'CORPORATIVO LOTE (FACTURA 5 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 8000,  iva: 1280, total: 9280,  tieneRep: true, cobradoBanco: true, efos: false },
-        { uuid: 'G99X-69B0-0012-SOLVO7', isDemo: true, fecha: '2026-11-08', rfc: 'EFOS69010169B', nombre: 'CONSULTORIA FANTASMA DEL SUR SA (69-B)', tipo: 'E', metodo: 'PUE', subtotal: 28500, iva: 4560, total: 33060, tieneRep: false, cobradoBanco: false, efos: true }
+        { uuid: 'A91F-4821-9901-SOLVO1', isDemo: true, fecha: '2026-11-02', rfc: 'ACM190812K91', emisorRfc: 'ACM190812K91', receptorRfc: 'SOL2106158K9', nombre: 'ACERO COMERCIAL DEL NORTE SA DE CV', tipo: 'I', metodo: 'PUE', subtotal: 145000, iva: 23200, total: 168200, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'B83C-1104-7721-SOLVO2', isDemo: true, fecha: '2026-11-28', rfc: 'TLO200115M44', emisorRfc: 'TLO200115M44', receptorRfc: 'SOL2106158K9', nombre: 'TRANSPORTE Y LOGISTICA OMEGA SA', tipo: 'I', metodo: 'PUE', subtotal: 68000, iva: 10880, total: 78880, tieneRep: false, cobradoBanco: false, efos: false },
+        { uuid: 'C74D-5520-3319-SOLVO3', isDemo: true, fecha: '2026-11-05', rfc: 'GDI180309P12', emisorRfc: 'GDI180309P12', receptorRfc: 'SOL2106158K9', nombre: 'GRUPO DISTRIBUIDOR INDUSTRIAL', tipo: 'I', metodo: 'PPD', subtotal: 95000, iva: 15200, total: 110200, tieneRep: false, cobradoBanco: true, efos: false },
+        { uuid: 'D12E-8831-1044-SOLVO4', isDemo: true, fecha: '2026-11-06', rfc: 'ECOM210901S88', emisorRfc: 'ECOM210901S88', receptorRfc: 'SOL2106158K9', nombre: 'VENTA E-COMMERCE STRIPE MEXICO', tipo: 'I', metodo: 'PUE', subtotal: 42000, iva: 6720, total: 48720, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'E55A-9012-4410-SOLVO5', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', emisorRfc: 'LOTE170422A11', receptorRfc: 'SOL2106158K9', nombre: 'CORPORATIVO LOTE (FACTURA 1 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 15000, iva: 2400, total: 17400, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'F66B-9013-4411-SOLVO6', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', emisorRfc: 'LOTE170422A11', receptorRfc: 'SOL2106158K9', nombre: 'CORPORATIVO LOTE (FACTURA 2 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 12000, iva: 1920, total: 13920, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'H77C-9014-4412-SOLVO8', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', emisorRfc: 'LOTE170422A11', receptorRfc: 'SOL2106158K9', nombre: 'CORPORATIVO LOTE (FACTURA 3 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 10000, iva: 1600, total: 11600, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'J88D-9015-4413-SOLVO9', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', emisorRfc: 'LOTE170422A11', receptorRfc: 'SOL2106158K9', nombre: 'CORPORATIVO LOTE (FACTURA 4 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 10000, iva: 1600, total: 11600, tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'K99E-9016-4414-SOLV10', isDemo: true, fecha: '2026-11-07', rfc: 'LOTE170422A11', emisorRfc: 'LOTE170422A11', receptorRfc: 'SOL2106158K9', nombre: 'CORPORATIVO LOTE (FACTURA 5 DE 5)', tipo: 'I', metodo: 'PUE', subtotal: 8000,  iva: 1280, total: 9280,  tieneRep: true, cobradoBanco: true, efos: false },
+        { uuid: 'G99X-69B0-0012-SOLVO7', isDemo: true, fecha: '2026-11-08', rfc: 'EFOS69010169B', emisorRfc: 'EFOS69010169B', receptorRfc: 'SOL2106158K9', nombre: 'CONSULTORIA FANTASMA DEL SUR SA (69-B)', tipo: 'E', metodo: 'PUE', subtotal: 28500, iva: 4560, total: 33060, tieneRep: false, cobradoBanco: false, efos: true }
       ];
 
       APP_STATE.bankMovements = [
@@ -4913,16 +4949,27 @@
 
       APP_STATE.annualMonths = MONTHS_ES.map(function(m, idx) {
         var r = baseMonths[idx];
+        // En Noviembre (idx === 10), de los $310,000 de PUE facturado, $68,000 (factura B83C) NO están cobrados:
+        // Base efectivamente cobrada = ($310,000 - $68,000) PUE cobrado + $95,000 PPD cobrado = $337,000.00
+        var pueNoCobradoDemo = (idx === 10 && !APP_STATE.pueReclassifiedInSim) ? 68000 : 0;
+        var pueCobradoDemo = Number((r[0] - pueNoCobradoDemo).toFixed(2));
+        var baseCobradaNeta = Number((pueCobradoDemo + r[1]).toFixed(2));
+        var tasaDemoPct = 2.5;
+        var isrCalculado = Number((baseCobradaNeta * (tasaDemoPct / 100)).toFixed(2));
         return {
           month: m,
           isDemo: true,
           ingresosPue: r[0],
+          ingresosPueCobrado: pueCobradoDemo,
+          ingresosPueNoCobrado: pueNoCobradoDemo,
           ppdCobrados: r[1],
+          baseIsrCobrada: baseCobradaNeta,
           notasCredito: r[2],
           deducciones: r[3],
           ivaTrasladado: r[4],
           ivaAcreditable: r[5],
-          isrEstimado: r[6],
+          isrRatePct: tasaDemoPct,
+          isrEstimado: isrCalculado,
           statusText: r[7],
           hasAlert: r[8]
         };
@@ -5182,18 +5229,21 @@
             totalPueTotal = Number((totalPueTotal + tot).toFixed(2));
             totalPueSub = Number((totalPueSub + sub).toFixed(2));
             totalIvaPue = Number((totalIvaPue + iva).toFixed(2));
-            if (x.cobradoBanco !== false) {
+            if (x.cobradoBanco === true) {
               b.ingresosPueCobrado = Number((b.ingresosPueCobrado + sub).toFixed(2));
               b.ivaCobradoMes = Number((b.ivaCobradoMes + iva).toFixed(2));
               totalPueCobradoTotal = Number((totalPueCobradoTotal + tot).toFixed(2));
               totalPueCobradoSub = Number((totalPueCobradoSub + sub).toFixed(2));
               totalIvaCobrado = Number((totalIvaCobrado + iva).toFixed(2));
-            } else {
+            } else if (x.cobradoBanco === false) {
               b.ingresosPueNoCobrado = Number((b.ingresosPueNoCobrado + sub).toFixed(2));
+              b.hasAlert = true;
+            } else {
+              // x.cobradoBanco === null (sin CSV bancario cargado: aún sin comprobar contra bancos)
               b.hasAlert = true;
             }
           } else if (x.metodo === 'PPD') {
-            if (x.cobradoBanco !== false) {
+            if (x.cobradoBanco === true) {
               b.ppdCobrados = Number((b.ppdCobrados + sub).toFixed(2));
               b.ivaTrasladado = Number((b.ivaTrasladado + iva).toFixed(2));
               b.ivaCobradoMes = Number((b.ivaCobradoMes + iva).toFixed(2));
@@ -5259,6 +5309,9 @@
           if (b.xmlCount === 0 && b.bankCount > 0) {
             b.hasAlert = true;
             b.statusText = '⚠️ SIN CFDI XML (' + b.bankCount + (b.bankCount === 1 ? ' HUÉRFANO · ' : ' HUÉRFANOS · ') + fmtMXN(exactConIva) + ')';
+          } else if (b.xmlCount > 0 && b.bankCount === 0 && bank.length === 0) {
+            b.hasAlert = true;
+            b.statusText = '⚠️ SIN COMPROBAR CON BANCOS (Bancos en $0.00 · CFDI c/IVA: ' + fmtMXN(exactConIva) + ')';
           } else if (b.orphanCount > 0) {
             b.hasAlert = true;
             b.statusText = '⚠️ ' + b.orphanCount + (b.orphanCount === 1 ? ' HUÉRFANO SIN CFDI (' : ' HUÉRFANOS SIN CFDI (') + fmtMXN(b.orphanAmount) + ' · CFDI c/IVA: ' + fmtMXN(exactConIva) + ')';
@@ -5273,14 +5326,18 @@
       APP_STATE.annualMonths = monthBuckets;
 
       // Sincronizar automáticamente la Calculadora Fiscal con la misma base cobrada (Pendiente #3: Sábana = Calculadora = $37,000 -> ISR $407.00)
-      var totalBaseCobradaAnual = Number((totalPueCobradoSub + totalPpdSub).toFixed(2));
+      var totalBaseCobradaAnual = (bank.length > 0)
+        ? Number((totalPueCobradoSub + totalPpdSub).toFixed(2))
+        : Number(totalPueSub.toFixed(2));
       if ($('calcIncomeInput')) $('calcIncomeInput').value = String(totalBaseCobradaAnual);
       if ($('calcDeductionsInput')) $('calcDeductionsInput').value = String(totalEgresosSub);
       runTaxCalculator();
 
-      // Pendiente #4 (8ª Auditoría): Cada fila del Visor muestra únicamente la diferencia propia de ESA fila (satPreload - realBank)
+      // Pendiente #4 (8ª Auditoría) + Pendiente #6b (9ª Auditoría):
+      // Si bank.length === 0 (sin CSV cargado), nunca afirmar "PUE CUADRADO AL CENTAVO CON BANCOS"; mostrar "SIN COMPROBAR (BANCOS EN $0.00)"
+      var noBankLoaded = (bank.length === 0);
       var pueRowDiff = Number((totalPueTotal - totalPueCobradoTotal).toFixed(2));
-      var ppdRowDiff = 0; // En fila PPD cobrado: satPreload (totalPpdTotal) vs realBank (totalPpdTotal) tiene diferencia propia $0.00
+      var ppdRowDiff = 0;
       var ivaFacturadoTotal = Number((totalIvaPue + (totalPpdTotal - totalPpdSub)).toFixed(2));
       var ivaRowDiff = Number((ivaFacturadoTotal - totalIvaCobrado).toFixed(2));
 
@@ -5290,16 +5347,22 @@
           satPreload: totalPueTotal,
           realBank: totalPueCobradoTotal,
           diff: pueRowDiff,
-          status: xmls.length === 0 && bank.length > 0
-            ? ('⚠️ SIN CFDI XML CARGADOS (' + bank.length + ' DEPÓSITOS HUÉRFANOS)')
-            : (Math.abs(pueRowDiff) < 0.01 ? '✓ PUE CUADRADO AL CENTAVO CON BANCOS' : ('ALERTA SAT: ' + fmtMXN(Math.abs(pueRowDiff)) + ' PUE NO COBRADO'))
+          status: (xmls.length === 0 && bank.length === 0)
+            ? 'BÓVEDA EN $0.00 · SUBE XML Y CSV'
+            : (xmls.length === 0 && bank.length > 0
+              ? ('⚠️ SIN CFDI XML CARGADOS (' + bank.length + ' DEPÓSITOS HUÉRFANOS)')
+              : (noBankLoaded
+                ? '⚠️ SIN COMPROBAR (BANCOS EN $0.00 · SUBE CSV)'
+                : (Math.abs(pueRowDiff) < 0.01 ? '✓ PUE CUADRADO AL CENTAVO CON BANCOS' : ('ALERTA SAT: ' + fmtMXN(Math.abs(pueRowDiff)) + ' PUE NO COBRADO'))))
         },
         {
           concept: 'Ingresos PPD Cobrados en Bancos (Sub: ' + fmtMXN(totalPpdSub) + ' · Total: ' + fmtMXN(totalPpdTotal) + ')',
           satPreload: totalPpdTotal,
           realBank: totalPpdTotal,
           diff: ppdRowDiff,
-          status: totalPpdTotal > 0 ? ('FALTA TIMBRAR REP 2.0 (' + fmtMXN(totalPpdTotal) + ')') : 'SIN DIFERENCIAS'
+          status: noBankLoaded && xmls.some(function(x) { return x.metodo === 'PPD'; })
+            ? '⚠️ PPD SIN COMPROBAR (BANCOS EN $0.00)'
+            : (totalPpdTotal > 0 ? ('FALTA TIMBRAR REP 2.0 (' + fmtMXN(totalPpdTotal) + ')') : 'SIN DIFERENCIAS')
         },
         {
           concept: 'Egresos / Notas Tipo E (Sub: ' + fmtMXN(totalEgresosSub) + ' · Total: ' + fmtMXN(totalEgresosTotal) + ')',
@@ -5313,7 +5376,9 @@
           satPreload: ivaFacturadoTotal,
           realBank: totalIvaCobrado,
           diff: ivaRowDiff,
-          status: Math.abs(ivaRowDiff) < 0.01 ? '✓ IVA CONCILIADO ($0.00 DIF)' : ('DIFERENCIA IVA PUE NO COBRADO: ' + fmtMXN(Math.abs(ivaRowDiff)))
+          status: noBankLoaded && ivaFacturadoTotal > 0
+            ? '⚠️ IVA SIN COMPROBAR (BANCOS EN $0.00)'
+            : (Math.abs(ivaRowDiff) < 0.01 ? '✓ IVA CONCILIADO ($0.00 DIF)' : ('DIFERENCIA IVA PUE NO COBRADO: ' + fmtMXN(Math.abs(ivaRowDiff))))
         }
       ];
 
@@ -5693,6 +5758,9 @@
             status: 'SOLO FALTA TIMBRAR REP DE C74D ($15,200 IVA)'
           };
           APP_STATE.annualMonths[10].ingresosPue = 242000;
+          APP_STATE.annualMonths[10].ingresosPueCobrado = 242000;
+          APP_STATE.annualMonths[10].ingresosPueNoCobrado = 0;
+          APP_STATE.annualMonths[10].baseIsrCobrada = 337000;
           APP_STATE.annualMonths[10].statusText = '✓ PUE CORREGIDO A PPD';
           APP_STATE.annualMonths[10].hasAlert = false;
           if (APP_STATE.guardianFindings[0]) {
@@ -5898,8 +5966,8 @@
       if ($('sidebarBankCount')) $('sidebarBankCount').textContent = String(bank.length);
       if ($('sidebarRiskScore')) {
         $('sidebarRiskScore').textContent = activeAlertsCount === 0
-          ? (APP_STATE.mode === 'CLEAN_ZERO' ? 'Limpio ($0.00)' : '0 Alertas (Limpio)')
-          : (activeAlertsCount + (activeAlertsCount === 1 ? ' Alerta' : ' Alertas'));
+          ? (APP_STATE.mode === 'CLEAN_ZERO' ? '0.0% ($0.00)' : '0 Alertas (Riesgo 0.0%)')
+          : (activeAlertsCount + (activeAlertsCount === 1 ? ' Alerta · ' : ' Alertas · ') + alertStats.riskPct.toFixed(1) + '%');
         $('sidebarRiskScore').className = activeAlertsCount === 0
           ? 'font-mono-num text-[var(--status-jade)] font-bold'
           : 'font-mono-num text-[var(--status-amber)] font-bold';
@@ -6149,7 +6217,7 @@
     function openInspectorForMonthRow(m) {
       if (!m) return;
       var ivaNeto = Math.max(0, Number(m.ivaTrasladado || 0) - Number(m.ivaAcreditable || 0));
-      var totalIngresosMes = (m.baseIsrCobrada !== undefined && APP_STATE.mode === 'OWN_FILES') ? Number(m.baseIsrCobrada) : (Number(m.ingresosPue || 0) + Number(m.ppdCobrados || 0));
+      var totalIngresosMes = (m.baseIsrCobrada !== undefined) ? Number(m.baseIsrCobrada) : (Number(m.ingresosPue || 0) + Number(m.ppdCobrados || 0));
       var bodyHtml =
         '<div class="shoji-panel p-4 space-y-2">' +
           '<div class="text-[10px] font-mono-num text-[var(--accent-champagne)]">CÉDULA MENSUAL · PRECIERRE 12M</div>' +
@@ -6282,16 +6350,32 @@
       }
       if ($('guardKpiSilentCancel')) {
         if (stats.orphanCnt > 0) {
+          if ($('guardKpiThirdCardTitle')) $('guardKpiThirdCardTitle').textContent = 'DEPÓSITOS HUÉRFANOS SIN CFDI';
+          if ($('guardKpiThirdCardSub')) $('guardKpiThirdCardSub').textContent = 'Abonos en banco sin XML vinculado';
           $('guardKpiSilentCancel').textContent = stats.orphanCnt + ' huérfano(s) (' + fmtMXN(stats.orphanAmt) + ')';
           $('guardKpiSilentCancel').className = 'font-mono-num text-xl text-[var(--status-crimson)] font-bold';
-        } else {
+        } else if (stats.cancelCnt > 0) {
+          if ($('guardKpiThirdCardTitle')) $('guardKpiThirdCardTitle').textContent = 'FACTURAS CANCELADAS';
+          if ($('guardKpiThirdCardSub')) $('guardKpiThirdCardSub').textContent = 'Revisión de vigencia CFDI';
           $('guardKpiSilentCancel').textContent = stats.cancelCnt + ' detectadas';
-          $('guardKpiSilentCancel').className = 'font-mono-num text-xl text-[var(--text-primary)]';
+          $('guardKpiSilentCancel').className = 'font-mono-num text-xl text-[var(--status-amber)] font-bold';
+        } else {
+          if ($('guardKpiThirdCardTitle')) $('guardKpiThirdCardTitle').textContent = 'HUÉRFANOS SIN CFDI';
+          if ($('guardKpiThirdCardSub')) $('guardKpiThirdCardSub').textContent = 'Depósitos bancarios sin XML';
+          $('guardKpiSilentCancel').textContent = '0 huérfanos ($0.00)';
+          $('guardKpiSilentCancel').className = 'font-mono-num text-xl text-[var(--status-jade)]';
         }
       }
       if ($('guardKpiEfosCount')) {
         $('guardKpiEfosCount').textContent = stats.efosCnt === 0 ? '0 EFOS' : (stats.efosCnt + ' EFOS (' + fmtMXN(stats.efosAmt) + ')');
         $('guardKpiEfosCount').className = 'font-mono-num text-xl ' + (stats.efosCnt > 0 ? 'text-[var(--status-crimson)]' : 'text-[var(--status-jade)]');
+      }
+      if ($('guardianRiskPctValue')) {
+        $('guardianRiskPctValue').textContent = stats.riskPct.toFixed(1) + '%';
+        $('guardianRiskPctValue').className = stats.riskPct > 0 ? 'text-[var(--status-amber)] font-extrabold' : 'text-[var(--status-jade)] font-extrabold';
+      }
+      if ($('guardianRiskFormulaText')) {
+        $('guardianRiskFormulaText').textContent = 'Fórmula: Monto en Hallazgos Activos (' + fmtMXN(stats.totalAlertAmount) + ') ÷ Base Operada del Periodo (' + fmtMXN(stats.baseOperadaPeriodo) + ') × 100 = ' + stats.riskPct.toFixed(1) + '% (' + stats.activeCount + ' causal' + (stats.activeCount === 1 ? '' : 'es') + ' activa' + (stats.activeCount === 1 ? '' : 's') + ')';
       }
 
       updateGuardBulkSummaryUI();
@@ -6453,8 +6537,8 @@
 
       if (badge) {
         badge.textContent = activeAlerts > 0
-          ? (activeAlerts + (activeAlerts === 1 ? ' CAUSAL ACTIVA EN RAM' : ' CAUSALES DETECTADAS EN RAM'))
-          : '10/10 CONTROLES EN VERDE';
+          ? (activeAlerts + (activeAlerts === 1 ? ' CAUSAL ACTIVA · RIESGO ' : ' CAUSALES · RIESGO ') + stats.riskPct.toFixed(1) + '% (' + fmtMXN(stats.totalAlertAmount) + ' ÷ ' + fmtMXN(stats.baseOperadaPeriodo) + ')')
+          : '10/10 CONTROLES EN VERDE · RIESGO 0.0%';
         badge.className = (activeAlerts > 0 ? 'badge-amber' : 'badge-jade') + ' px-2.5 py-1 rounded-full text-[10px] font-mono-num font-bold';
       }
 
@@ -6912,6 +6996,7 @@
         .replace(/á/g, 'a').replace(/é/g, 'e').replace(/í/g, 'i').replace(/ó/g, 'o').replace(/ú/g, 'u')
         .replace(/Á/g, 'A').replace(/É/g, 'E').replace(/Í/g, 'I').replace(/Ó/g, 'O').replace(/Ú/g, 'U')
         .replace(/ñ/g, 'n').replace(/Ñ/g, 'N').replace(/ü/g, 'u').replace(/Ü/g, 'U')
+        .replace(/÷/g, '/').replace(/×/g, 'x').replace(/−/g, '-').replace(/→/g, '->')
         .replace(/[·•]/g, '-').replace(/[—–]/g, '-').replace(/[^\x20-\x7E]/g, '')
         .replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
     }
@@ -6989,10 +7074,11 @@
         '(----------------------------------------------------------------------------------------) Tj'
       ];
 
-      var maxLines = Math.min(linesArray.length, 38);
+      streamLines.push('/F1 7.5 Tf');
+      var maxLines = Math.min(linesArray.length, 48);
       for (var i = 0; i < maxLines; i++) {
-        streamLines.push('0 -14 Td');
-        streamLines.push('(' + toPdfAscii(linesArray[i]).slice(0, 96) + ') Tj');
+        streamLines.push('0 -11 Td');
+        streamLines.push('(' + toPdfAscii(linesArray[i]).slice(0, 240) + ') Tj');
       }
 
       streamLines.push('0 -18 Td');
@@ -7105,15 +7191,22 @@
         ];
       } else if (reportType === 'MATERIALIDAD') {
         docTitle = 'Expediente de Conciliación Bancaria SPEI y Póliza de Materialidad';
+        var scopedMat = getScopedOwnRecords();
+        var activeXmlsMat = APP_STATE.mode === 'OWN_FILES' ? scopedMat.xmls : (APP_STATE.xmlInvoices || []);
+        var detectedReceptorMat = (activeXmlsMat[0] && activeXmlsMat[0].receptorRfc) ? activeXmlsMat[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
+        pdfLines.push('RFC Receptor / Contribuyente: ' + detectedReceptorMat + ' | RFC Activo: ' + (APP_STATE.activeRfc || 'XAXX010101000'));
         var rowsHtml = (APP_STATE.reconciliationRows || []).map(function(r) {
           var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'SIN XML';
-          pdfLines.push(r.bank.fecha + ' | ' + r.bank.concepto.slice(0, 28) + ' | ' + fmtMXN(r.bank.amount) + ' | ' + r.matchType + ' | ' + (r.cuenta || '401-01'));
-          return '<tr><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.bank.fecha) + '</td><td class="p-2 border-b border-[var(--border-shoji)]">' + esc(r.bank.concepto) + '</td><td class="p-2 border-b border-[var(--border-shoji)] text-right font-mono-num">' + fmtMXN(r.bank.amount) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.matchType) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(uuids) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.cuenta || '') + '</td></tr>';
+          var emRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return (m.emisorRfc || m.rfc || 'SIN-RFC') + ' (' + (m.nombre || '').slice(0, 22) + ')'; }).join(' + ') : 'SIN CFDI';
+          var recRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.receptorRfc || detectedReceptorMat; }).join(' + ') : detectedReceptorMat;
+          pdfLines.push(r.bank.fecha + ' | ' + r.bank.concepto.slice(0, 26) + ' | ' + fmtMXN(r.bank.amount) + ' | ' + r.matchType + ' | Cta: ' + (r.cuenta || '401-01'));
+          pdfLines.push('  UUID: ' + uuids + ' | RFC Emisor: ' + emRfcs + ' | RFC Receptor: ' + recRfcs);
+          return '<tr><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.bank.fecha) + '</td><td class="p-2 border-b border-[var(--border-shoji)]">' + esc(r.bank.concepto) + '</td><td class="p-2 border-b border-[var(--border-shoji)] text-right font-mono-num">' + fmtMXN(r.bank.amount) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.matchType) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(uuids) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(emRfcs) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(recRfcs) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.cuenta || '') + '</td></tr>';
         }).join('');
         specificHtml =
           '<div class="space-y-3">' +
-            '<h4 class="font-bold text-sm text-[var(--accent-champagne-bright)]">Cruce de Estado de Cuenta vs. CFDI 4.0 (SPEI 1 a 5)</h4>' +
-            '<table class="w-full text-left border-collapse text-[11px]"><thead><tr class="border-b border-[var(--accent-champagne)]"><th class="p-2">Fecha</th><th class="p-2">Concepto</th><th class="p-2 text-right">Monto</th><th class="p-2">Cruce</th><th class="p-2">UUID</th><th class="p-2">Cuenta Contable</th></tr></thead><tbody>' + (rowsHtml || '<tr><td colspan="6" class="p-3">Sin movimientos cargados</td></tr>') + '</tbody></table>' +
+            '<h4 class="font-bold text-sm text-[var(--accent-champagne-bright)]">Cruce de Estado de Cuenta vs. CFDI 4.0 (SPEI 1 a 5) · RFC Receptor: ' + esc(detectedReceptorMat) + '</h4>' +
+            '<table class="w-full text-left border-collapse text-[11px]"><thead><tr class="border-b border-[var(--accent-champagne)]"><th class="p-2">Fecha</th><th class="p-2">Concepto</th><th class="p-2 text-right">Monto</th><th class="p-2">Cruce</th><th class="p-2">UUID Completo</th><th class="p-2">RFC Emisor</th><th class="p-2">RFC Receptor</th><th class="p-2">Cuenta Contable</th></tr></thead><tbody>' + (rowsHtml || '<tr><td colspan="8" class="p-3">Sin movimientos cargados</td></tr>') + '</tbody></table>' +
           '</div>';
       } else {
         var satBase = $('kpiSatVisorBase') ? $('kpiSatVisorBase').textContent : '$0.00';
@@ -7121,25 +7214,67 @@
         var diffBase = $('kpiBankDiffBadge') ? $('kpiBankDiffBadge').textContent : 'Diferencia: $0.00';
         var resMargin = $('kpiResicoMargin') ? $('kpiResicoMargin').textContent : '$3,500,000.00';
         var statsPdf = recalculateDynamicAlertCounters();
+        var scopedExec = getScopedOwnRecords();
+        var execXmls = APP_STATE.mode === 'OWN_FILES' ? scopedExec.xmls : (APP_STATE.xmlInvoices || []);
+        var receptorRfcExec = (execXmls[0] && execXmls[0].receptorRfc) ? execXmls[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
+
+        // Obtener ISR e IVA del periodo activo (Noviembre o total de Sábana / Calculadora)
+        var novBucket = (APP_STATE.annualMonths && APP_STATE.annualMonths[10]) ? APP_STATE.annualMonths[10] : null;
+        var sumBaseCobrada = 0, sumIsrSabana = 0, sumIvaTras = 0, sumIvaAcred = 0;
+        (APP_STATE.annualMonths || []).forEach(function(mb) {
+          sumBaseCobrada += Number(mb.baseIsrCobrada !== undefined ? mb.baseIsrCobrada : ((mb.ingresosPue || 0) + (mb.ppdCobrados || 0)));
+          sumIsrSabana += Number(mb.isrEstimado || 0);
+          sumIvaTras += Number(mb.ivaTrasladado || 0);
+          sumIvaAcred += Number(mb.ivaAcreditable || 0);
+        });
+        var periodBaseCobrada = (novBucket && (novBucket.ingresosPue > 0 || novBucket.ppdCobrados > 0))
+          ? Number(novBucket.baseIsrCobrada !== undefined ? novBucket.baseIsrCobrada : (novBucket.ingresosPue + novBucket.ppdCobrados))
+          : sumBaseCobrada;
+        var periodIsrRate = (novBucket && novBucket.isrRatePct) ? novBucket.isrRatePct : (APP_STATE.mode === 'SAMPLE_CASE' ? 2.5 : 1.1);
+        var periodIsrAmount = (novBucket && novBucket.isrEstimado > 0) ? novBucket.isrEstimado : sumIsrSabana;
+        var periodIvaTras = (novBucket && novBucket.ivaTrasladado > 0) ? novBucket.ivaTrasladado : sumIvaTras;
+        var periodIvaAcred = (novBucket && novBucket.ivaAcreditable > 0) ? novBucket.ivaAcreditable : sumIvaAcred;
+        var periodIvaNeto = Math.max(0, Number((periodIvaTras - periodIvaAcred).toFixed(2)));
+        var isrSummaryLine = fmtMXN(periodIsrAmount) + ' (Base cobrada ' + fmtMXN(periodBaseCobrada) + ' x ' + periodIsrRate + '% RESICO)';
+        var ivaSummaryLine = fmtMXN(periodIvaNeto) + ' (IVA Trasladado ' + fmtMXN(periodIvaTras) + ' - IVA Acreditable ' + fmtMXN(periodIvaAcred) + ')';
+
         var activeFindingsOnly = (APP_STATE.guardianFindings || []).filter(function(f) {
           return !(f.resolved || f.type.indexOf('RECLASIFICADA') !== -1 || f.type.indexOf('RESUELTA') !== -1);
         });
-        pdfLines.push('Ingresos Visor SAT (PUE): ' + satBase);
-        pdfLines.push('Depositos en Bancos (CSV): ' + bnkBase + ' (' + diffBase + ')');
+        pdfLines.push('RFC Receptor / Contribuyente: ' + receptorRfcExec + ' | RFC Activo: ' + (APP_STATE.activeRfc || 'XAXX010101000'));
+        pdfLines.push('Ingresos Visor SAT (CFDI): ' + satBase + ' | Depositos en Bancos (CSV): ' + bnkBase + ' (' + diffBase + ')');
+        pdfLines.push('ISR Estimado del Periodo: ' + isrSummaryLine);
+        pdfLines.push('IVA del Periodo (16%): ' + ivaSummaryLine);
+        pdfLines.push('Porcentaje de Riesgo Fiscal: ' + statsPdf.riskFormulaStr + ' | Sobrecosto Salida RESICO: +23.5% (26.0% - 2.5%)');
         pdfLines.push('Margen Anual RESICO ($3.5M): ' + resMargin);
-        pdfLines.push('Alertas Activas en el Periodo: ' + activeFindingsOnly.length);
+        pdfLines.push('--- Relacion de CFDI Cargados (' + execXmls.length + ' comprobantes) ---');
+        var xmlsDictamenHtml = execXmls.map(function(x) {
+          var emR = x.emisorRfc || x.rfc || 'XAXX010101000';
+          var recR = x.receptorRfc || receptorRfcExec;
+          pdfLines.push('CFDI UUID: ' + x.uuid + ' | Emisor: ' + emR + ' | Receptor: ' + recR + ' | ' + x.metodo + ' | Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = ' + fmtMXN(x.total));
+          return '<li class="py-1 border-b border-[var(--border-shoji)] font-mono-num"><strong>UUID: ' + esc(x.uuid) + '</strong> · Emisor: <strong>' + esc(emR) + '</strong> (' + esc(x.nombre) + ') → Receptor: <strong>' + esc(recR) + '</strong> · ' + esc(x.metodo) + ' · Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = <strong>' + fmtMXN(x.total) + '</strong></li>';
+        }).join('');
         pdfLines.push('--- Hallazgos de Auditoria Preventiva (' + activeFindingsOnly.length + ' alertas activas) ---');
         var alertsHtml = activeFindingsOnly.map(function(f) {
-          pdfLines.push('* ' + f.type + ' (' + fmtMXN(f.amount) + '): ' + f.rfc);
-          return '<li class="py-1 border-b border-[var(--border-shoji)]"><strong>' + esc(f.type) + ' (' + fmtMXN(f.amount) + '):</strong> ' + esc(f.rfc) + ' — ' + esc(f.action) + '</li>';
+          pdfLines.push('* ' + f.type + ' (' + fmtMXN(f.amount) + ') | UUID/Ref: ' + (f.uuid || 'S/F') + ' | RFC: ' + f.rfc);
+          return '<li class="py-1 border-b border-[var(--border-shoji)]"><strong>' + esc(f.type) + ' (' + fmtMXN(f.amount) + ') · UUID/Ref: ' + esc(f.uuid || 'S/F') + ':</strong> ' + esc(f.rfc) + ' (Receptor: ' + esc(receptorRfcExec) + ') — ' + esc(f.action) + '</li>';
         }).join('');
         specificHtml =
           '<div class="space-y-3">' +
-            '<div class="grid grid-cols-3 gap-3 font-mono-num">' +
-              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">VISOR SAT (PUE)</div><div class="text-sm font-bold">' + esc(satBase) + '</div></div>' +
+            '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono-num">' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">VISOR SAT (CFDI)</div><div class="text-sm font-bold">' + esc(satBase) + '</div><div class="text-[10px] text-[var(--text-secondary)]">RFC Receptor: ' + esc(receptorRfcExec) + '</div></div>' +
               '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">BANCOS (CSV)</div><div class="text-sm font-bold text-[var(--accent-champagne-bright)]">' + esc(bnkBase) + '</div><div class="text-[10px]">' + esc(diffBase) + '</div></div>' +
-              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">MARGEN RESICO $3.5M</div><div class="text-sm font-bold text-[var(--status-jade)]">' + esc(resMargin) + '</div></div>' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">RIESGO FISCAL Y MARGEN $3.5M</div><div class="text-sm font-bold text-[var(--status-amber)]">Riesgo: ' + statsPdf.riskPct.toFixed(1) + '%</div><div class="text-[10px] text-[var(--status-jade)]">Margen: ' + esc(resMargin) + '</div></div>' +
             '</div>' +
+            '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono-num text-[11px]">' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--accent-champagne-bright)] font-bold">ISR ESTIMADO DEL PERIODO</div><div>' + esc(isrSummaryLine) + '</div></div>' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--accent-champagne-bright)] font-bold">IVA DEL PERIODO (16%)</div><div>' + esc(ivaSummaryLine) + '</div></div>' +
+            '</div>' +
+            '<div class="p-3 rounded border border-[var(--accent-champagne)]/50 font-mono-num text-[11px]">' +
+              '<strong>Fórmula de Riesgo Fiscal:</strong> ' + esc(statsPdf.riskFormulaStr) + ' · Sobrecosto Salida RESICO: +23.5% (26.0% PFAE Art. 152 − 2.5% RESICO Art. 113-E).' +
+            '</div>' +
+            '<h4 class="font-bold text-xs text-[var(--accent-champagne-bright)] pt-1">Relación de CFDI Verificados (' + execXmls.length + ' comprobantes):</h4>' +
+            '<ul class="space-y-1 text-[11px]">' + (xmlsDictamenHtml || '<li>Sin CFDI XML cargados en el periodo.</li>') + '</ul>' +
             '<h4 class="font-bold text-xs text-[var(--accent-champagne-bright)] pt-2">Hallazgos de Auditoría (' + activeFindingsOnly.length + ' alertas activas):</h4>' +
             '<ul class="space-y-1 text-[11px]">' + (alertsHtml || '<li>0 alertas activas: todos los hallazgos del periodo fueron resueltos o reclasificados.</li>') + '</ul>' +
           '</div>';
@@ -7444,18 +7579,78 @@
       showToast('Archivo ' + outFilename + ' descargado.');
     }
 
+    function buildDiotBatchLinesFromCurrentState() {
+      var scoped = getScopedOwnRecords();
+      var activeXmls = APP_STATE.mode === 'OWN_FILES' ? scoped.xmls : (APP_STATE.xmlInvoices || []);
+      var reconRows = APP_STATE.reconciliationRows || [];
+      if (APP_STATE.mode === 'CLEAN_ZERO' || (activeXmls.length === 0 && reconRows.length === 0)) {
+        return [];
+      }
+      var lines = [];
+      var emittedUuids = {};
+      var fallbackReceptor = (activeXmls[0] && activeXmls[0].receptorRfc) ? activeXmls[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
+
+      // 1) Operaciones en la tabla de Conciliación Bancaria (con sus CFDI vinculados o depósitos huérfanos)
+      reconRows.forEach(function(r) {
+        if (r.matched && r.matched.length > 0) {
+          r.matched.forEach(function(m) {
+            emittedUuids[m.uuid] = true;
+            var emRfc = m.emisorRfc || m.rfc || 'XAXX010101000';
+            var recRfc = m.receptorRfc || fallbackReceptor;
+            var subInt = Math.round(Number(m.subtotal || 0));
+            var subDec = Number(m.subtotal || 0).toFixed(2);
+            var ivaDec = Number(m.iva || 0).toFixed(2);
+            var totDec = Number(m.total || 0).toFixed(2);
+            lines.push([
+              '04', '85', emRfc, (m.nombre || ''), recRfc, m.uuid, (m.fecha || ''), (m.metodo || 'PUE'),
+              subInt, subDec, ivaDec, totDec, r.matchType, (r.cuenta || '401-01'), '0|0|0|0|0|0|0|0|'
+            ].join('|'));
+          });
+        } else if (r.bank) {
+          var bAmt = Number(r.bank.amount || 0);
+          var bSub = Number((bAmt / 1.16).toFixed(2));
+          var bIva = Number((bAmt - bSub).toFixed(2));
+          lines.push([
+            '04', '85', 'SIN_CFDI_XML', (r.bank.concepto || 'DEPOSITO_HUERFANO'), fallbackReceptor,
+            (r.bank.id + '_' + (r.bank.ref || 'S/R')), (r.bank.fecha || ''), 'SPEI_SIN_XML',
+            Math.round(bSub), bSub.toFixed(2), bIva.toFixed(2), bAmt.toFixed(2),
+            'HUERFANO_SIN_CFDI', (r.cuenta || '205-01'), '0|0|0|0|0|0|0|0|'
+          ].join('|'));
+        }
+      });
+
+      // 2) Cualquier XML cargado en el alcance actual que aún no haya sido listado por conciliación (ej. PUE no cobrado o solo XML cargados)
+      activeXmls.forEach(function(x) {
+        if (!emittedUuids[x.uuid]) {
+          var emRfc = x.emisorRfc || x.rfc || 'XAXX010101000';
+          var recRfc = x.receptorRfc || fallbackReceptor;
+          var subInt = Math.round(Number(x.subtotal || 0));
+          var subDec = Number(x.subtotal || 0).toFixed(2);
+          var ivaDec = Number(x.iva || 0).toFixed(2);
+          var totDec = Number(x.total || 0).toFixed(2);
+          var est = x.cobradoBanco === false ? 'PUE_NO_COBRADO' : (x.cobradoBanco === null ? 'SIN_COMPROBAR_BANCOS' : 'REGISTRADO');
+          lines.push([
+            '04', '85', emRfc, (x.nombre || ''), recRfc, x.uuid, (x.fecha || ''), (x.metodo || 'PUE'),
+            subInt, subDec, ivaDec, totDec, est, '401-01', '0|0|0|0|0|0|0|0|'
+          ].join('|'));
+        }
+      });
+
+      return lines;
+    }
+
     function exportDiotBatchTxt() {
       if (APP_STATE.mode === 'OWN_FILES' && !hasActivePaidOrMasterLicense()) {
         if ($('stripePricingModal')) $('stripePricingModal').classList.remove('hidden');
         showToast('Activa tu licencia para exportar la Carga Batch DIOT.');
         return;
       }
+      var lines = buildDiotBatchLinesFromCurrentState();
+      if (!lines || lines.length === 0) {
+        showToast('⚠️ Sin operaciones para exportar en DIOT: sube tus archivos XML/CSV o selecciona un RFC con operaciones.');
+        return;
+      }
       var isDemo = APP_STATE.mode === 'SAMPLE_CASE';
-      var lines = [
-        '04|85|ACM190812K91|||||145000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0||',
-        '04|85|GDI180309P12|||||95000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0||',
-        '04|85|LOTE170422A11|||||55000|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0||'
-      ];
       var blob = new Blob([lines.join('\r\n')], { type: 'text/plain;charset=utf-8;' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -7463,7 +7658,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast('Archivo de Carga Batch DIOT (.TXT) descargado.');
+      showToast('Archivo de Carga Batch DIOT (.TXT) descargado con ' + lines.length + ' operación(es) reales del estado en pantalla.');
     }
 
     /* ========================================================================
@@ -8730,18 +8925,29 @@
       if ($('exportAnnualSabanaCsvBtn')) {
         $('exportAnnualSabanaCsvBtn').addEventListener('click', function() {
           var rows = APP_STATE.annualMonths.map(function(m) {
-            return [m.month, m.ingresosPue, m.ppdCobrados, m.notasCredito, m.deducciones, m.ivaTrasladado, m.ivaAcreditable, m.isrEstimado, m.statusText];
+            var baseCob = m.baseIsrCobrada !== undefined ? m.baseIsrCobrada : ((m.ingresosPue || 0) + (m.ppdCobrados || 0));
+            var tasaPct = m.isrRatePct || (APP_STATE.mode === 'SAMPLE_CASE' ? 2.5 : 1.1);
+            return [m.month, m.ingresosPue, m.ppdCobrados, baseCob, tasaPct + '%', m.notasCredito, m.deducciones, m.ivaTrasladado, m.ivaAcreditable, m.isrEstimado, m.statusText];
           });
-          downloadCsvFile('SOLVO_TAX_Sabana_Anual_12M.csv', ['Mes', 'Ingresos PUE', 'PPD Cobrados (REP)', 'Notas Credito (E)', 'Deducciones', 'IVA Trasladado', 'IVA Acreditable', 'ISR Estimado', 'Estatus'], rows);
+          downloadCsvFile('SOLVO_TAX_Sabana_Anual_12M.csv', ['Mes', 'Ingresos PUE', 'PPD Cobrados (REP)', 'Base Cobrada ISR', 'Tasa ISR RESICO', 'Notas Credito (E)', 'Deducciones', 'IVA Trasladado', 'IVA Acreditable', 'ISR Estimado', 'Estatus'], rows);
         });
       }
       if ($('exportPolizaContableBtn')) {
         $('exportPolizaContableBtn').addEventListener('click', function() {
+          var scopedPol = getScopedOwnRecords();
+          var activeXmlsPol = APP_STATE.mode === 'OWN_FILES' ? scopedPol.xmls : (APP_STATE.xmlInvoices || []);
+          var defaultRecRfc = (activeXmlsPol[0] && activeXmlsPol[0].receptorRfc) ? activeXmlsPol[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
           var rows = APP_STATE.reconciliationRows.map(function(r) {
             var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'SIN XML';
-            return [r.bank.fecha, r.bank.banco || 'SPEI', r.bank.concepto, r.bank.ref, r.bank.amount, r.matchType, uuids, r.feeAmt, r.cuenta || '401-01'];
+            var emisorRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.emisorRfc || m.rfc || 'XAXX010101000'; }).join(' + ') : 'SIN RFC EMISOR';
+            var emisorNames = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.nombre || ''; }).join(' + ') : (r.bank.concepto || '');
+            var receptorRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.receptorRfc || defaultRecRfc; }).join(' + ') : defaultRecRfc;
+            var metodos = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.metodo || 'PUE'; }).join(' + ') : 'SPEI';
+            var subSum = (r.matched && r.matched.length) ? r.matched.reduce(function(acc, m) { return acc + Number(m.subtotal || 0); }, 0).toFixed(2) : '0.00';
+            var ivaSum = (r.matched && r.matched.length) ? r.matched.reduce(function(acc, m) { return acc + Number(m.iva || 0); }, 0).toFixed(2) : '0.00';
+            return [r.bank.fecha, r.bank.banco || 'SPEI', r.bank.concepto, r.bank.ref, r.bank.amount, r.matchType, uuids, emisorRfcs, emisorNames, receptorRfcs, metodos, subSum, ivaSum, r.feeAmt, r.cuenta || '401-01'];
           });
-          downloadCsvFile('SOLVO_TAX_Poliza_COI_CONTPAQi.csv', ['Fecha', 'Banco', 'Concepto Bancario', 'Referencia', 'Monto', 'Resultado de Cruce', 'Facturas XML (UUID)', 'Comision / Ajuste', 'Cuenta Contable COI / CONTPAQi'], rows);
+          downloadCsvFile('SOLVO_TAX_Poliza_COI_CONTPAQi.csv', ['Fecha', 'Banco', 'Concepto Bancario', 'Referencia', 'Monto', 'Resultado de Cruce', 'Facturas XML (UUID)', 'RFC Emisor', 'Nombre Emisor', 'RFC Receptor', 'Metodo Pago', 'Subtotal CFDI', 'IVA CFDI', 'Comision / Ajuste', 'Cuenta Contable COI / CONTPAQi'], rows);
         });
       }
       if ($('exportDiotTxtBtn')) {
@@ -8749,10 +8955,14 @@
       }
       if ($('exportGuardianAuditCsvBtn')) {
         $('exportGuardianAuditCsvBtn').addEventListener('click', function() {
+          var statsCsv = recalculateDynamicAlertCounters();
+          var scopedAud = getScopedOwnRecords();
+          var activeXmlsAud = APP_STATE.mode === 'OWN_FILES' ? scopedAud.xmls : (APP_STATE.xmlInvoices || []);
+          var recRfcAud = (activeXmlsAud[0] && activeXmlsAud[0].receptorRfc) ? activeXmlsAud[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
           var rows = APP_STATE.guardianFindings.map(function(f) {
-            return [f.type, f.rfc, f.uuid, f.fecha || '2026-11', f.amount, f.action];
+            return [f.type, f.rfc, recRfcAud, f.uuid, f.fecha || '2026-11', f.amount, statsCsv.riskPct.toFixed(1) + '%', f.action];
           });
-          downloadCsvFile('SOLVO_TAX_Auditoria_CFDI_Guardian360.csv', ['Tipo de Alerta', 'Proveedor / Cliente (RFC)', 'Folio UUID', 'Fecha', 'Importe', 'Explicacion'], rows);
+          downloadCsvFile('SOLVO_TAX_Auditoria_CFDI_Guardian360.csv', ['Tipo de Alerta', 'RFC Emisor / Tercero', 'RFC Receptor', 'Folio UUID', 'Fecha', 'Importe', 'Porcentaje de Riesgo Periodo', 'Explicacion'], rows);
         });
       }
       if ($('exportNominaAnnualCsvBtn')) {
@@ -8792,8 +9002,9 @@
       }
       if ($('downloadLicenseCertBtn')) {
         $('downloadLicenseCertBtn').addEventListener('click', function() {
-          var k = $('licModalKey') ? $('licModalKey').textContent : 'SIN-CLAVE';
-          var p = $('licModalPlanName') ? $('licModalPlanName').textContent : 'SOLVO TAX';
+          var activeLicObj = getActiveLicense();
+          var k = (activeLicObj && activeLicObj.key) ? activeLicObj.key : ($('licModalKey') ? $('licModalKey').textContent : 'SIN-CLAVE');
+          var p = (activeLicObj && activeLicObj.planName) ? activeLicObj.planName : ($('licModalPlanName') ? $('licModalPlanName').textContent : 'SOLVO TAX');
           var fp = getDeviceFingerprint();
           var txtContent = buildLicenseCertificateTxtString(k, p, fp);
           setPersistentItem(STORAGE_KEYS.LAST_TXT_CERT, txtContent);
