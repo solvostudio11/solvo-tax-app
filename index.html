@@ -1467,7 +1467,7 @@
               </div>
             </div>
             <button id="exportExecutiveDefensePdfBtn" type="button" class="btn-urushi-pill px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5">
-              <span>📄 Exportar Resumen PDF</span>
+              <span>📄 Exportar Dictamen Ejecutivo PDF</span>
             </button>
           </div>
 
@@ -1791,12 +1791,12 @@
                 📥 Descargar Póliza (.CSV)
               </button>
 
-              <button id="exportDiotTxtBtn" type="button" class="btn-urushi-pill px-3 py-1.5 text-xs" title="Generar archivo .TXT para Carga Batch DIOT del SAT">
-                📋 Carga Batch DIOT (.TXT)
+              <button id="exportDiotTxtBtn" type="button" class="btn-urushi-pill px-3 py-1.5 text-xs" title="Exporta las operaciones con CFDI y depósitos huérfanos con base desglosada a 16% para amarre DIOT">
+                📋 Exportar Cédula DIOT (.TXT)
               </button>
 
-              <button id="exportMaterialidadPackBtn" type="button" class="btn-makie-gold px-3.5 py-1.5 text-xs">
-                📄 Reporte de Materialidad PDF
+              <button id="exportMaterialidadPackBtn" type="button" class="btn-makie-gold px-3.5 py-1.5 text-xs" title="Descarga el Expediente de Conciliación Bancaria y Materialidad con totales, ISR, IVA y riesgo">
+                📄 Descargar Expediente PDF
               </button>
             </div>
           </div>
@@ -2817,9 +2817,6 @@
       <div class="pt-3 border-t border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2 shrink-0">
         <span class="text-[11px] text-[var(--text-secondary)]">Incluye membrete y logotipo de Marca Blanca configurados localmente.</span>
         <div class="flex flex-wrap items-center gap-2">
-          <button id="downloadNativePdfFileBtn" type="button" class="btn-makie-gold px-4 py-2 text-xs font-bold">
-            📄 Descargar PDF Directo (.PDF)
-          </button>
           <button id="downloadExecutiveReportHtmlBtn" type="button" class="btn-urushi-pill px-3.5 py-2 text-xs font-bold border-[var(--accent-champagne)]">
             📥 Descargar (.HTML Imprimible)
           </button>
@@ -3537,6 +3534,7 @@
         if (getPersistentItem(STORAGE_KEYS.MANUAL_LOGOUT_FREE) === '1') return;
         if (!res || !res.ok || !res.license || !res.license.key) return;
         var remoteLic = res.license;
+        if (!verifyCryptographicVipKeyStructure(remoteLic.key)) return;
         if (remoteLic.expiresAt && Date.now() > Number(remoteLic.expiresAt)) return;
         if (!hasActivePaidOrMasterLicense()) {
           saveEncryptedLicenseToVault(remoteLic, true);
@@ -3892,13 +3890,29 @@
       }
     }
 
+    var VALID_VIP_PLAN_MAP = {
+      '199':   { name: 'Plan Mensual 1 RFC ($199)', cap: '1 RFC Activo · 100% Filas Libres', maxDev: 1 },
+      'C199':  { name: 'Plan Mensual 1 RFC ($199)', cap: '1 RFC Activo · 100% Filas Libres', maxDev: 1 },
+      '2D1R':  { name: 'Plan Mensual 1 RFC ($199)', cap: '1 RFC Activo · 100% Filas Libres', maxDev: 2 },
+      '349':   { name: 'Plan Pro Multi-RFC ($349)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 },
+      'P349':  { name: 'Plan Pro Multi-RFC ($349)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 },
+      '3DUR':  { name: 'Plan Pro Multi-RFC ($349)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 },
+      '2490':  { name: 'Plan Anual Despacho ($2,490)', cap: 'RFCs Ilimitados + Marca Blanca · 100% Libre', maxDev: 4 },
+      'D2490': { name: 'Plan Anual Despacho ($2,490)', cap: 'RFCs Ilimitados + Marca Blanca · 100% Libre', maxDev: 4 },
+      '4DUR':  { name: 'Plan Anual Despacho ($2,490)', cap: 'RFCs Ilimitados + Marca Blanca · 100% Libre', maxDev: 4 }
+    };
+
     function computeSignature(payloadStr) {
       var hash = 0x811c9dc5;
-      var secret = 'SOLVO_STUDIO_2027_URUSHI_SALT_9941';
-      var combined = payloadStr + '|' + secret;
+      var kMask = [9,21,22,12,21,5,9,14,15,30,19,21,5,104,106,104,109,5,15,8,15,9,18,19,5,9,27,22,14,5,99,99,110,107];
+      var sChars = [];
+      for (var m = 0; m < kMask.length; m++) {
+        sChars.push(String.fromCharCode((kMask[m] ^ 0x5A) & 0xff));
+      }
+      var combined = String(payloadStr || '') + '|' + sChars.join('');
       for (var i = 0; i < combined.length; i++) {
         hash ^= combined.charCodeAt(i);
-        hash = (hash * 0x01000193) >>> 0;
+        hash = Math.imul(hash, 0x01000193) >>> 0;
       }
       return hash.toString(36).toUpperCase().padStart(6, '0').slice(0, 6);
     }
@@ -3919,19 +3933,73 @@
       } catch (e) {}
     }
 
-    function verifyCryptographicVipKeyStructure(keyStr) {
+    function inspectVipKeyAuthenticity(keyStr) {
       var k = String(keyStr || '').trim().toUpperCase();
-      if (!k) return false;
-      if (k === MASTER_ROOT_KEY) return true;
+      if (!k) return { valid: false, reason: 'EMPTY' };
+      if (k === MASTER_ROOT_KEY) return { valid: true, isMaster: true };
       var parts = k.split('-');
-      if (parts.length < 6 || parts[0] !== 'SOLVO' || parts[1] !== 'VIP') return false;
+      if (parts.length !== 7 || parts[0] !== 'SOLVO' || parts[1] !== 'VIP') {
+        return { valid: false, reason: 'MALFORMED' };
+      }
       var daysPart = parts[2] || '';
       var datePart = parts[3] || '';
-      if (!/^[0-9]{1,4}D$/.test(daysPart) || !/^[0-9]{8}$/.test(datePart)) return false;
-      // Si el código tiene firma de 6 caracteres generada por el emisor, verificamos integridad o formato alfanumérico válido
-      var sigPart = parts[parts.length - 1] || '';
-      if (!/^[A-Z0-9]{3,10}$/.test(sigPart)) return false;
-      return true;
+      var tagPart = parts[4] || '';
+      var tierPart = parts[5] || '';
+      var sigPart = parts[6] || '';
+      if (!/^[0-9]{1,4}D$/.test(daysPart) || !/^[0-9]{8}$/.test(datePart)) {
+        return { valid: false, reason: 'MALFORMED' };
+      }
+      var daysNum = parseInt(daysPart.replace('D', ''), 10) || 0;
+      if (daysNum < 1 || daysNum > 3650) {
+        return { valid: false, reason: 'INVALID_DURATION' };
+      }
+      if (!/^[A-Z0-9]{1,8}$/.test(tagPart)) {
+        return { valid: false, reason: 'MALFORMED' };
+      }
+      if (!Object.prototype.hasOwnProperty.call(VALID_VIP_PLAN_MAP, tierPart)) {
+        return { valid: false, reason: 'INVALID_TIER' };
+      }
+      if (!/^[A-Z0-9]{6}$/.test(sigPart)) {
+        return { valid: false, reason: 'INVALID_SIGNATURE_FORMAT' };
+      }
+      var core = parts.slice(0, 6).join('-');
+      var expectedSig = computeSignature(core);
+      if (sigPart !== expectedSig) {
+        return { valid: false, reason: 'FORGED_SIGNATURE' };
+      }
+      var yIssued = parseInt(datePart.slice(0, 4), 10);
+      var mIssued = parseInt(datePart.slice(4, 6), 10) - 1;
+      var dIssued = parseInt(datePart.slice(6, 8), 10);
+      var issuedDateObj = new Date(yIssued, mIssued, dIssued, 23, 59, 59);
+      if (
+        isNaN(issuedDateObj.getTime()) ||
+        issuedDateObj.getFullYear() !== yIssued ||
+        issuedDateObj.getMonth() !== mIssued ||
+        issuedDateObj.getDate() !== dIssued
+      ) {
+        return { valid: false, reason: 'INVALID_DATE' };
+      }
+      var issuedEndMs = issuedDateObj.getTime();
+      var issuedStartMs = new Date(yIssued, mIssued, dIssued, 0, 0, 0).getTime();
+      if (issuedStartMs > Date.now() + (2 * 86400000)) {
+        return { valid: false, reason: 'FUTURE_ISSUE_DATE' };
+      }
+      if (Date.now() > (issuedEndMs + (daysNum * 86400000))) {
+        return { valid: false, reason: 'EXPIRED', daysNum: daysNum, datePart: datePart };
+      }
+      return {
+        valid: true,
+        daysNum: daysNum,
+        datePart: datePart,
+        tagPart: tagPart,
+        tierPart: tierPart,
+        planInfo: VALID_VIP_PLAN_MAP[tierPart],
+        sigPart: sigPart
+      };
+    }
+
+    function verifyCryptographicVipKeyStructure(keyStr) {
+      return inspectVipKeyAuthenticity(keyStr).valid;
     }
 
     function saveEncryptedLicenseToVault(licObj, skipCloudSync) {
@@ -4144,38 +4212,24 @@
         return false;
       }
 
-      var parts = key.split('-');
-      if (parts.length >= 6 && parts[0] === 'SOLVO' && parts[1] === 'VIP') {
-        var daysPart = parts[2];
-        var tagPart = parts[4] || 'VIP';
-        var tierPart = parts[5] || '349';
-        var daysNum = parseInt(daysPart.replace('D', ''), 10) || 32;
-
-        var planMap = {
-          '199':  { name: 'Plan Mensual 1 RFC ($199)', cap: '1 RFC Activo · 100% Filas Libres', maxDev: 1 },
-          'C199': { name: 'Plan Mensual 1 RFC ($199)', cap: '1 RFC Activo · 100% Filas Libres', maxDev: 1 },
-          '2D1R': { name: 'Plan Mensual 1 RFC ($199)', cap: '1 RFC Activo · 100% Filas Libres', maxDev: 2 },
-          '349':  { name: 'Plan Pro Multi-RFC ($349)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 },
-          'P349': { name: 'Plan Pro Multi-RFC ($349)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 },
-          '3DUR': { name: 'Plan Pro Multi-RFC ($349)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 },
-          '2490': { name: 'Plan Anual Despacho ($2,490)', cap: 'RFCs Ilimitados + Marca Blanca · 100% Libre', maxDev: 4 },
-          'D2490':{ name: 'Plan Anual Despacho ($2,490)', cap: 'RFCs Ilimitados + Marca Blanca · 100% Libre', maxDev: 4 },
-          '4DUR': { name: 'Plan Anual Despacho ($2,490)', cap: 'RFCs Ilimitados + Marca Blanca · 100% Libre', maxDev: 4 }
-        };
-        var pInfo = planMap[tierPart] || { name: 'Licencia VIP SOLVO TAX (' + daysNum + ' días)', cap: 'RFCs Ilimitados · 100% Filas Libres', maxDev: 3 };
-
-        var datePartStr = parts[3] || '';
-        if (/^[0-9]{8}$/.test(datePartStr)) {
-          var yIssued = parseInt(datePartStr.slice(0, 4), 10);
-          var mIssued = parseInt(datePartStr.slice(4, 6), 10) - 1;
-          var dIssued = parseInt(datePartStr.slice(6, 8), 10);
-          var issuedDateMs = new Date(yIssued, mIssued, dIssued, 23, 59, 59).getTime();
-          if (!isNaN(issuedDateMs) && Date.now() > (issuedDateMs + (daysNum * 86400000))) {
-            markCodeBurned(key, 'EXPIRED_BY_ISSUE_DATE');
-            showToast('❌ Código expirado: La vigencia de ' + daysNum + ' días emitida el ' + datePartStr + ' ya concluyó.');
-            return false;
-          }
+      var authCheck = inspectVipKeyAuthenticity(key);
+      if (!authCheck.valid) {
+        if (authCheck.reason === 'EXPIRED') {
+          markCodeBurned(key, 'EXPIRED_BY_ISSUE_DATE');
+          showToast('❌ Código expirado: La vigencia de ' + authCheck.daysNum + ' días emitida el ' + authCheck.datePart + ' ya concluyó.');
+        } else if (authCheck.reason === 'FORGED_SIGNATURE' || authCheck.reason === 'INVALID_TIER' || authCheck.reason === 'INVALID_DURATION') {
+          showToast('❌ Firma criptográfica inválida: Esta llave no es auténtica o fue alterada.');
+        } else {
+          showToast('❌ Código no válido: Verifica que sea una llave oficial emitida por SOLVO.');
         }
+        return false;
+      }
+
+      if (authCheck.valid && !authCheck.isMaster) {
+        var daysNum = authCheck.daysNum;
+        var tagPart = authCheck.tagPart;
+        var tierPart = authCheck.tierPart;
+        var pInfo = authCheck.planInfo;
 
         var regAll = {};
         try { regAll = JSON.parse(getPersistentItem(STORAGE_KEYS.DEVICE_REGISTRY) || '{}'); } catch (e) {}
@@ -5515,10 +5569,10 @@
       ];
 
       APP_STATE.bankMovements = [
-        { id: 'CSV-1', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-02', concepto: 'SPEI CLIENTE FACTURA 1 PUE', ref: 'SPEI-17400', amount: 17400.00 },
-        { id: 'CSV-2', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-05', concepto: 'SPEI CLIENTE FACTURA 2 PUE', ref: 'SPEI-13920', amount: 13920.00 },
-        { id: 'CSV-3', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-07', concepto: 'SPEI CLIENTE FACTURA 3 PPD', ref: 'SPEI-11600', amount: 11600.00 },
-        { id: 'CSV-4', isDemo: false, ownerRfc: activeRfc, banco: 'Estado de Cuenta Propio', fecha: '2026-11-09', concepto: 'DEPOSITO HUERFANO SIN FACTURA XML', ref: 'DEP-5000', amount: 5000.00 }
+        { id: 'CSV-1', isDemo: false, ownerRfc: activeRfc, banco: 'BBVA', fecha: '2026-11-02', concepto: 'SPEI CLIENTE FACTURA 1 PUE', ref: 'SPEI-17400', amount: 17400.00 },
+        { id: 'CSV-2', isDemo: false, ownerRfc: activeRfc, banco: 'BBVA', fecha: '2026-11-05', concepto: 'SPEI CLIENTE FACTURA 2 PUE', ref: 'SPEI-13920', amount: 13920.00 },
+        { id: 'CSV-3', isDemo: false, ownerRfc: activeRfc, banco: 'BBVA', fecha: '2026-11-07', concepto: 'SPEI CLIENTE FACTURA 3 PPD', ref: 'SPEI-11600', amount: 11600.00 },
+        { id: 'CSV-4', isDemo: false, ownerRfc: activeRfc, banco: 'BBVA', fecha: '2026-11-09', concepto: 'DEPOSITO HUERFANO SIN FACTURA XML', ref: 'DEP-5000', amount: 5000.00 }
       ];
 
       if ($('xmlDropLabel')) $('xmlDropLabel').textContent = '3 XML Propios';
@@ -7039,13 +7093,78 @@
       return { width: w, height: h, hex: fallbackHex + '>' };
     }
 
+    function getDocumentSpecificDefaultFooter(docTitle) {
+      var t = String(docTitle || '');
+      if (t.indexOf('Expediente') !== -1) {
+        return 'Expediente generado localmente con SOLVO TAX (100% RAM Local - Cero Nube).';
+      }
+      if (t.indexOf('Cotizaci') !== -1) {
+        return 'Cotizacion generada localmente con SOLVO TAX (100% RAM Local - Cero Nube).';
+      }
+      if (t.indexOf('Cedula') !== -1 || t.indexOf('Cédula') !== -1) {
+        return 'Cedula fiscal generada localmente con SOLVO TAX (100% RAM Local - Cero Nube).';
+      }
+      return 'Dictamen generado localmente con SOLVO TAX (100% RAM Local - Cero Nube).';
+    }
+
+    function computeUnifiedFiscalReportSummary() {
+      var satBase = $('kpiSatVisorBase') ? $('kpiSatVisorBase').textContent : '$0.00';
+      var bnkBase = $('kpiRealBankInflow') ? $('kpiRealBankInflow').textContent : '$0.00';
+      var diffBase = $('kpiBankDiffBadge') ? $('kpiBankDiffBadge').textContent : 'Diferencia: $0.00';
+      var resMargin = $('kpiResicoMargin') ? $('kpiResicoMargin').textContent : '$3,500,000.00';
+      var statsPdf = recalculateDynamicAlertCounters();
+      var scopedExec = getScopedOwnRecords();
+      var execXmls = APP_STATE.mode === 'OWN_FILES' ? scopedExec.xmls : (APP_STATE.xmlInvoices || []);
+      var receptorRfcExec = (execXmls[0] && execXmls[0].receptorRfc) ? execXmls[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
+
+      var novBucket = (APP_STATE.annualMonths && APP_STATE.annualMonths[10]) ? APP_STATE.annualMonths[10] : null;
+      var sumBaseCobrada = 0, sumIsrSabana = 0, sumIvaTras = 0, sumIvaAcred = 0;
+      (APP_STATE.annualMonths || []).forEach(function(mb) {
+        sumBaseCobrada += Number(mb.baseIsrCobrada !== undefined ? mb.baseIsrCobrada : ((mb.ingresosPue || 0) + (mb.ppdCobrados || 0)));
+        sumIsrSabana += Number(mb.isrEstimado || 0);
+        sumIvaTras += Number(mb.ivaTrasladado || 0);
+        sumIvaAcred += Number(mb.ivaAcreditable || 0);
+      });
+      var periodBaseCobrada = (novBucket && (novBucket.ingresosPue > 0 || novBucket.ppdCobrados > 0))
+        ? Number(novBucket.baseIsrCobrada !== undefined ? novBucket.baseIsrCobrada : (novBucket.ingresosPue + novBucket.ppdCobrados))
+        : sumBaseCobrada;
+      var periodIsrRate = (novBucket && novBucket.isrRatePct) ? novBucket.isrRatePct : (APP_STATE.mode === 'SAMPLE_CASE' ? 2.5 : 1.1);
+      var periodIsrAmount = (novBucket && novBucket.isrEstimado > 0) ? novBucket.isrEstimado : sumIsrSabana;
+      var periodIvaTras = (novBucket && novBucket.ivaTrasladado > 0) ? novBucket.ivaTrasladado : sumIvaTras;
+      var periodIvaAcred = (novBucket && novBucket.ivaAcreditable > 0) ? novBucket.ivaAcreditable : sumIvaAcred;
+      var periodIvaNeto = Math.max(0, Number((periodIvaTras - periodIvaAcred).toFixed(2)));
+      var isrSummaryLine = fmtMXN(periodIsrAmount) + ' (Base cobrada ' + fmtMXN(periodBaseCobrada) + ' x ' + periodIsrRate + '% RESICO)';
+      var ivaSummaryLine = fmtMXN(periodIvaNeto) + ' (IVA Trasladado ' + fmtMXN(periodIvaTras) + ' - IVA Acreditable ' + fmtMXN(periodIvaAcred) + ')';
+      var cleanRiskFormula = String(statsPdf.riskFormulaStr || '').replace(/^Riesgo\s+Fiscal:\s*/i, '');
+      var sobrecostoLine = 'Sobrecosto Salida RESICO: +23.5% (26.0% PFAE Art. 152 - 2.5% RESICO Art. 113-E) | Margen Anual RESICO ($3.5M): ' + resMargin;
+      var activeFindingsOnly = (APP_STATE.guardianFindings || []).filter(function(f) {
+        return !(f.resolved || f.type.indexOf('RECLASIFICADA') !== -1 || f.type.indexOf('RESUELTA') !== -1);
+      });
+      return {
+        satBase: satBase,
+        bnkBase: bnkBase,
+        diffBase: diffBase,
+        resMargin: resMargin,
+        statsPdf: statsPdf,
+        execXmls: execXmls,
+        receptorRfc: receptorRfcExec,
+        isrSummaryLine: isrSummaryLine,
+        ivaSummaryLine: ivaSummaryLine,
+        cleanRiskFormula: cleanRiskFormula,
+        sobrecostoLine: sobrecostoLine,
+        activeFindingsOnly: activeFindingsOnly
+      };
+    }
+
     function generateAndDownloadNativePdf(docTitle, linesArray) {
       var isPro = hasActivePaidOrMasterLicense();
       var wl = (isPro && APP_STATE.whiteLabel) ? APP_STATE.whiteLabel : {};
       var firm = (isPro && wl.firmName) ? wl.firmName : 'SOLVO STUDIO - DIVISION FISCAL';
       var partner = (isPro && wl.partnerName) ? wl.partnerName : 'Auditoria & Cierre Fiscal';
       var phone = (isPro && wl.phone) ? wl.phone : '+52 55 8000 2027';
-      var footer = (isPro && wl.footerNote) ? wl.footerNote : 'Dictamen generado localmente con SOLVO TAX (100% RAM Local - Cero Nube).';
+      var defaultFooter = getDocumentSpecificDefaultFooter(docTitle);
+      var customFooter = (isPro && wl.footerNote && wl.footerNote.indexOf('Dictamen generado localmente con SOLVO TAX') === -1) ? wl.footerNote : defaultFooter;
+      var footer = customFooter;
       var nowStr = new Date().toLocaleDateString('es-MX');
       var modeTag = APP_STATE.mode === 'SAMPLE_CASE' ? ' [MODO DEMO - DATOS DE EJEMPLO]' : ' [ARCHIVOS DEL CONTRIBUYENTE]';
 
@@ -7140,7 +7259,6 @@
       var firm = wl.firmName || 'SOLVO STUDIO · DIVISIÓN FISCAL';
       var partner = wl.partnerName || 'Auditoría & Cierre Fiscal';
       var phone = wl.phone || '+52 55 8000 2027';
-      var footer = wl.footerNote || 'Dictamen generado localmente con SOLVO TAX (100% RAM Local · Cero Nube).';
       var logoUri = wl.logoDataUri || SAMPLE_FIRM_LOGO_SVG;
       var nowStr = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
       var isDemo = APP_STATE.mode === 'SAMPLE_CASE';
@@ -7191,67 +7309,57 @@
         ];
       } else if (reportType === 'MATERIALIDAD') {
         docTitle = 'Expediente de Conciliación Bancaria SPEI y Póliza de Materialidad';
-        var scopedMat = getScopedOwnRecords();
-        var activeXmlsMat = APP_STATE.mode === 'OWN_FILES' ? scopedMat.xmls : (APP_STATE.xmlInvoices || []);
-        var detectedReceptorMat = (activeXmlsMat[0] && activeXmlsMat[0].receptorRfc) ? activeXmlsMat[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
+        var repMat = computeUnifiedFiscalReportSummary();
+        var detectedReceptorMat = repMat.receptorRfc;
         pdfLines.push('RFC Receptor / Contribuyente: ' + detectedReceptorMat + ' | RFC Activo: ' + (APP_STATE.activeRfc || 'XAXX010101000'));
+        pdfLines.push('Total XML (Visor SAT): ' + repMat.satBase + ' | Total Bancos (CSV): ' + repMat.bnkBase + ' (' + repMat.diffBase + ')');
+        pdfLines.push('ISR Estimado del Periodo: ' + repMat.isrSummaryLine);
+        pdfLines.push('IVA del Periodo (16%): ' + repMat.ivaSummaryLine);
+        pdfLines.push('Porcentaje de Riesgo Fiscal: ' + repMat.cleanRiskFormula);
+        pdfLines.push(repMat.sobrecostoLine);
+        pdfLines.push('--- Detalle de Movimientos Bancarios y Póliza de Materialidad ---');
         var rowsHtml = (APP_STATE.reconciliationRows || []).map(function(r) {
           var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'SIN XML';
-          var emRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return (m.emisorRfc || m.rfc || 'SIN-RFC') + ' (' + (m.nombre || '').slice(0, 22) + ')'; }).join(' + ') : 'SIN CFDI';
+          var emRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return (m.emisorRfc || m.rfc || 'SIN-RFC') + ' (' + (m.nombre || '') + ')'; }).join(' + ') : 'SIN CFDI';
           var recRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.receptorRfc || detectedReceptorMat; }).join(' + ') : detectedReceptorMat;
-          pdfLines.push(r.bank.fecha + ' | ' + r.bank.concepto.slice(0, 26) + ' | ' + fmtMXN(r.bank.amount) + ' | ' + r.matchType + ' | Cta: ' + (r.cuenta || '401-01'));
+          pdfLines.push(r.bank.fecha + ' | ' + (r.bank.banco || 'BBVA') + ' | ' + r.bank.concepto + ' | ' + fmtMXN(r.bank.amount) + ' | ' + r.matchType + ' | Cta: ' + (r.cuenta || '401-01'));
           pdfLines.push('  UUID: ' + uuids + ' | RFC Emisor: ' + emRfcs + ' | RFC Receptor: ' + recRfcs);
           return '<tr><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.bank.fecha) + '</td><td class="p-2 border-b border-[var(--border-shoji)]">' + esc(r.bank.concepto) + '</td><td class="p-2 border-b border-[var(--border-shoji)] text-right font-mono-num">' + fmtMXN(r.bank.amount) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.matchType) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(uuids) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(emRfcs) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(recRfcs) + '</td><td class="p-2 border-b border-[var(--border-shoji)] font-mono-num">' + esc(r.cuenta || '') + '</td></tr>';
         }).join('');
         specificHtml =
           '<div class="space-y-3">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono-num">' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">TOTAL XML (VISOR SAT)</div><div class="text-sm font-bold">' + esc(repMat.satBase) + '</div><div class="text-[10px] text-[var(--text-secondary)]">RFC Receptor: ' + esc(detectedReceptorMat) + '</div></div>' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">TOTAL BANCOS (CSV)</div><div class="text-sm font-bold text-[var(--accent-champagne-bright)]">' + esc(repMat.bnkBase) + '</div><div class="text-[10px]">' + esc(repMat.diffBase) + '</div></div>' +
+              '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--text-muted)]">IMPUESTOS Y RIESGO</div><div class="text-xs font-bold">ISR: ' + esc(repMat.isrSummaryLine) + '</div><div class="text-[10px]">IVA: ' + esc(repMat.ivaSummaryLine) + ' · Riesgo: ' + repMat.statsPdf.riskPct.toFixed(1) + '%</div></div>' +
+            '</div>' +
             '<h4 class="font-bold text-sm text-[var(--accent-champagne-bright)]">Cruce de Estado de Cuenta vs. CFDI 4.0 (SPEI 1 a 5) · RFC Receptor: ' + esc(detectedReceptorMat) + '</h4>' +
             '<table class="w-full text-left border-collapse text-[11px]"><thead><tr class="border-b border-[var(--accent-champagne)]"><th class="p-2">Fecha</th><th class="p-2">Concepto</th><th class="p-2 text-right">Monto</th><th class="p-2">Cruce</th><th class="p-2">UUID Completo</th><th class="p-2">RFC Emisor</th><th class="p-2">RFC Receptor</th><th class="p-2">Cuenta Contable</th></tr></thead><tbody>' + (rowsHtml || '<tr><td colspan="8" class="p-3">Sin movimientos cargados</td></tr>') + '</tbody></table>' +
           '</div>';
       } else {
-        var satBase = $('kpiSatVisorBase') ? $('kpiSatVisorBase').textContent : '$0.00';
-        var bnkBase = $('kpiRealBankInflow') ? $('kpiRealBankInflow').textContent : '$0.00';
-        var diffBase = $('kpiBankDiffBadge') ? $('kpiBankDiffBadge').textContent : 'Diferencia: $0.00';
-        var resMargin = $('kpiResicoMargin') ? $('kpiResicoMargin').textContent : '$3,500,000.00';
-        var statsPdf = recalculateDynamicAlertCounters();
-        var scopedExec = getScopedOwnRecords();
-        var execXmls = APP_STATE.mode === 'OWN_FILES' ? scopedExec.xmls : (APP_STATE.xmlInvoices || []);
-        var receptorRfcExec = (execXmls[0] && execXmls[0].receptorRfc) ? execXmls[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
+        var repExec = computeUnifiedFiscalReportSummary();
+        var satBase = repExec.satBase;
+        var bnkBase = repExec.bnkBase;
+        var diffBase = repExec.diffBase;
+        var resMargin = repExec.resMargin;
+        var statsPdf = repExec.statsPdf;
+        var execXmls = repExec.execXmls;
+        var receptorRfcExec = repExec.receptorRfc;
+        var isrSummaryLine = repExec.isrSummaryLine;
+        var ivaSummaryLine = repExec.ivaSummaryLine;
+        var activeFindingsOnly = repExec.activeFindingsOnly;
 
-        // Obtener ISR e IVA del periodo activo (Noviembre o total de Sábana / Calculadora)
-        var novBucket = (APP_STATE.annualMonths && APP_STATE.annualMonths[10]) ? APP_STATE.annualMonths[10] : null;
-        var sumBaseCobrada = 0, sumIsrSabana = 0, sumIvaTras = 0, sumIvaAcred = 0;
-        (APP_STATE.annualMonths || []).forEach(function(mb) {
-          sumBaseCobrada += Number(mb.baseIsrCobrada !== undefined ? mb.baseIsrCobrada : ((mb.ingresosPue || 0) + (mb.ppdCobrados || 0)));
-          sumIsrSabana += Number(mb.isrEstimado || 0);
-          sumIvaTras += Number(mb.ivaTrasladado || 0);
-          sumIvaAcred += Number(mb.ivaAcreditable || 0);
-        });
-        var periodBaseCobrada = (novBucket && (novBucket.ingresosPue > 0 || novBucket.ppdCobrados > 0))
-          ? Number(novBucket.baseIsrCobrada !== undefined ? novBucket.baseIsrCobrada : (novBucket.ingresosPue + novBucket.ppdCobrados))
-          : sumBaseCobrada;
-        var periodIsrRate = (novBucket && novBucket.isrRatePct) ? novBucket.isrRatePct : (APP_STATE.mode === 'SAMPLE_CASE' ? 2.5 : 1.1);
-        var periodIsrAmount = (novBucket && novBucket.isrEstimado > 0) ? novBucket.isrEstimado : sumIsrSabana;
-        var periodIvaTras = (novBucket && novBucket.ivaTrasladado > 0) ? novBucket.ivaTrasladado : sumIvaTras;
-        var periodIvaAcred = (novBucket && novBucket.ivaAcreditable > 0) ? novBucket.ivaAcreditable : sumIvaAcred;
-        var periodIvaNeto = Math.max(0, Number((periodIvaTras - periodIvaAcred).toFixed(2)));
-        var isrSummaryLine = fmtMXN(periodIsrAmount) + ' (Base cobrada ' + fmtMXN(periodBaseCobrada) + ' x ' + periodIsrRate + '% RESICO)';
-        var ivaSummaryLine = fmtMXN(periodIvaNeto) + ' (IVA Trasladado ' + fmtMXN(periodIvaTras) + ' - IVA Acreditable ' + fmtMXN(periodIvaAcred) + ')';
-
-        var activeFindingsOnly = (APP_STATE.guardianFindings || []).filter(function(f) {
-          return !(f.resolved || f.type.indexOf('RECLASIFICADA') !== -1 || f.type.indexOf('RESUELTA') !== -1);
-        });
         pdfLines.push('RFC Receptor / Contribuyente: ' + receptorRfcExec + ' | RFC Activo: ' + (APP_STATE.activeRfc || 'XAXX010101000'));
         pdfLines.push('Ingresos Visor SAT (CFDI): ' + satBase + ' | Depositos en Bancos (CSV): ' + bnkBase + ' (' + diffBase + ')');
         pdfLines.push('ISR Estimado del Periodo: ' + isrSummaryLine);
         pdfLines.push('IVA del Periodo (16%): ' + ivaSummaryLine);
-        pdfLines.push('Porcentaje de Riesgo Fiscal: ' + statsPdf.riskFormulaStr + ' | Sobrecosto Salida RESICO: +23.5% (26.0% - 2.5%)');
-        pdfLines.push('Margen Anual RESICO ($3.5M): ' + resMargin);
+        pdfLines.push('Porcentaje de Riesgo Fiscal: ' + repExec.cleanRiskFormula);
+        pdfLines.push(repExec.sobrecostoLine);
         pdfLines.push('--- Relacion de CFDI Cargados (' + execXmls.length + ' comprobantes) ---');
         var xmlsDictamenHtml = execXmls.map(function(x) {
           var emR = x.emisorRfc || x.rfc || 'XAXX010101000';
           var recR = x.receptorRfc || receptorRfcExec;
-          pdfLines.push('CFDI UUID: ' + x.uuid + ' | Emisor: ' + emR + ' | Receptor: ' + recR + ' | ' + x.metodo + ' | Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = ' + fmtMXN(x.total));
+          pdfLines.push('CFDI UUID: ' + x.uuid + ' | Emisor: ' + emR + ' (' + (x.nombre || '') + ') | Receptor: ' + recR + ' | ' + x.metodo + ' | Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = ' + fmtMXN(x.total));
           return '<li class="py-1 border-b border-[var(--border-shoji)] font-mono-num"><strong>UUID: ' + esc(x.uuid) + '</strong> · Emisor: <strong>' + esc(emR) + '</strong> (' + esc(x.nombre) + ') → Receptor: <strong>' + esc(recR) + '</strong> · ' + esc(x.metodo) + ' · Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = <strong>' + fmtMXN(x.total) + '</strong></li>';
         }).join('');
         pdfLines.push('--- Hallazgos de Auditoria Preventiva (' + activeFindingsOnly.length + ' alertas activas) ---');
@@ -7271,7 +7379,7 @@
               '<div class="p-3 rounded border border-[var(--border-shoji)]"><div class="text-[10px] text-[var(--accent-champagne-bright)] font-bold">IVA DEL PERIODO (16%)</div><div>' + esc(ivaSummaryLine) + '</div></div>' +
             '</div>' +
             '<div class="p-3 rounded border border-[var(--accent-champagne)]/50 font-mono-num text-[11px]">' +
-              '<strong>Fórmula de Riesgo Fiscal:</strong> ' + esc(statsPdf.riskFormulaStr) + ' · Sobrecosto Salida RESICO: +23.5% (26.0% PFAE Art. 152 − 2.5% RESICO Art. 113-E).' +
+              '<strong>Porcentaje de Riesgo Fiscal:</strong> ' + esc(repExec.cleanRiskFormula) + ' · Sobrecosto Salida RESICO: +23.5% (26.0% PFAE Art. 152 - 2.5% RESICO Art. 113-E).' +
             '</div>' +
             '<h4 class="font-bold text-xs text-[var(--accent-champagne-bright)] pt-1">Relación de CFDI Verificados (' + execXmls.length + ' comprobantes):</h4>' +
             '<ul class="space-y-1 text-[11px]">' + (xmlsDictamenHtml || '<li>Sin CFDI XML cargados en el periodo.</li>') + '</ul>' +
@@ -7279,6 +7387,7 @@
             '<ul class="space-y-1 text-[11px]">' + (alertsHtml || '<li>0 alertas activas: todos los hallazgos del periodo fueron resueltos o reclasificados.</li>') + '</ul>' +
           '</div>';
       }
+      var footer = (wl.footerNote && wl.footerNote.indexOf('Dictamen generado localmente con SOLVO TAX') === -1) ? wl.footerNote : getDocumentSpecificDefaultFooter(docTitle);
 
       var demoWatermarkHtml = isDemo
         ? '<div class="p-2 rounded bg-[var(--status-amber)]/15 border border-[var(--status-amber)] text-[11px] font-mono-num text-[var(--status-amber)] font-bold">⚠️ REPORTE GENERADO CON DATOS DE EJEMPLO [MODO DEMO] — Para generar un reporte oficial con datos reales, vacía el demo y sube tus archivos propios.</div>'
@@ -7495,23 +7604,68 @@
       var lines = String(rawText || '').split(/\r?\n/);
       var movs = [];
       var activeOwnerRfc = (APP_STATE.activeRfc && APP_STATE.activeRfc !== 'CLEAN') ? APP_STATE.activeRfc : 'XAXX010101000';
+      var headerColMap = null;
+      var knownBanksRegex = /^(BBVA|BANCOMER|BBVA\s*MEXICO|BANORTE|SANTANDER|BANAMEX|CITIBANAMEX|HSBC|SCOTIABANK|INBURSA|STP|BANREGIO|BAJIO|AFIRME|AZTECA|BANCO\s*AZTECA|NU|HEY\s*BANCO|BANCOPPEL|IXE|MIFEL|MULTIVA|ACTINVER)$/i;
+
       for (var i = 0; i < lines.length; i++) {
         var ln = lines[i].trim();
         if (!ln) continue;
         if (ln.charAt(0) === '<') continue; // Ignorar líneas XML
-        if (i === 0 && ln.toLowerCase().indexOf('fecha') !== -1) continue;
-        var cols = ln.split(',');
+        if (i === 0 && ln.toLowerCase().indexOf('fecha') !== -1) {
+          var hParts = ln.toLowerCase().split(',').map(function(c) { return c.trim(); });
+          headerColMap = {
+            bancoIdx: hParts.indexOf('banco'),
+            conceptoIdx: hParts.indexOf('concepto') !== -1 ? hParts.indexOf('concepto') : hParts.indexOf('concepto bancario'),
+            refIdx: hParts.indexOf('referencia') !== -1 ? hParts.indexOf('referencia') : hParts.indexOf('ref')
+          };
+          continue;
+        }
+        var cols = ln.split(',').map(function(c) { return c.trim(); });
         if (cols.length >= 2) {
           var amt = parseFloat(cols[cols.length - 1].replace(/[^0-9.-]/g, '')) || 0;
           if (amt > 0) {
+            var fechaVal = cols[0] || '2026-11-09';
+            var bancoVal = 'BBVA';
+            var conceptoVal = 'Movimiento Bancario SPEI';
+            var refVal = 'SPEI-' + (movs.length + 1);
+
+            if (cols.length >= 5) {
+              bancoVal = cols[1] || 'BBVA';
+              conceptoVal = cols[2] || 'Movimiento Bancario SPEI';
+              refVal = cols[3] || ('SPEI-' + (movs.length + 1));
+            } else if (cols.length === 4) {
+              var col1IsBank = (headerColMap && headerColMap.bancoIdx === 1) || knownBanksRegex.test(cols[1]);
+              if (col1IsBank) {
+                bancoVal = cols[1] || 'BBVA';
+                conceptoVal = cols[2] || 'Movimiento Bancario SPEI';
+                refVal = 'SPEI-' + (movs.length + 1);
+              } else {
+                bancoVal = 'BBVA';
+                conceptoVal = cols[1] || 'Movimiento Bancario SPEI';
+                refVal = cols[2] || ('SPEI-' + (movs.length + 1));
+              }
+            } else if (cols.length === 3) {
+              if (knownBanksRegex.test(cols[1])) {
+                bancoVal = cols[1];
+                conceptoVal = 'Deposito SPEI ' + cols[1];
+              } else {
+                bancoVal = 'BBVA';
+                conceptoVal = cols[1] || 'Movimiento Bancario SPEI';
+              }
+            }
+
+            if (!bancoVal || bancoVal === 'Estado de Cuenta Propio') {
+              bancoVal = 'BBVA';
+            }
+
             movs.push({
               id: 'CSV-' + (movs.length + 1),
               isDemo: false,
               ownerRfc: activeOwnerRfc,
-              banco: 'Estado de Cuenta Propio',
-              fecha: cols[0].trim() || '2026-11-09',
-              concepto: cols[1].trim() || 'Movimiento Bancario CSV',
-              ref: (cols[2] ? cols[2].trim() : '') || ('REF-' + (movs.length + 1)),
+              banco: bancoVal,
+              fecha: fechaVal,
+              concepto: conceptoVal,
+              ref: refVal,
               amount: amt
             });
           }
@@ -7579,6 +7733,17 @@
       showToast('Archivo ' + outFilename + ' descargado.');
     }
 
+    function calcUnifiedDiotBaseAndIva(totalAmt) {
+      var tot = Number(Number(totalAmt || 0).toFixed(2));
+      var base = Number((tot / 1.16).toFixed(2));
+      var iva = Number((tot - base).toFixed(2));
+      return {
+        baseStr: base.toFixed(2),
+        ivaStr: iva.toFixed(2),
+        totStr: tot.toFixed(2)
+      };
+    }
+
     function buildDiotBatchLinesFromCurrentState() {
       var scoped = getScopedOwnRecords();
       var activeXmls = APP_STATE.mode === 'OWN_FILES' ? scoped.xmls : (APP_STATE.xmlInvoices || []);
@@ -7590,48 +7755,40 @@
       var emittedUuids = {};
       var fallbackReceptor = (activeXmls[0] && activeXmls[0].receptorRfc) ? activeXmls[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
 
-      // 1) Operaciones en la tabla de Conciliación Bancaria (con sus CFDI vinculados o depósitos huérfanos)
+      // 1) Operaciones en la tabla de Conciliación Bancaria (con sus CFDI vinculados y movimientos sin CFDI con una sola base = total / 1.16)
       reconRows.forEach(function(r) {
         if (r.matched && r.matched.length > 0) {
           r.matched.forEach(function(m) {
             emittedUuids[m.uuid] = true;
             var emRfc = m.emisorRfc || m.rfc || 'XAXX010101000';
             var recRfc = m.receptorRfc || fallbackReceptor;
-            var subInt = Math.round(Number(m.subtotal || 0));
-            var subDec = Number(m.subtotal || 0).toFixed(2);
-            var ivaDec = Number(m.iva || 0).toFixed(2);
-            var totDec = Number(m.total || 0).toFixed(2);
+            var u = calcUnifiedDiotBaseAndIva(m.total);
             lines.push([
               '04', '85', emRfc, (m.nombre || ''), recRfc, m.uuid, (m.fecha || ''), (m.metodo || 'PUE'),
-              subInt, subDec, ivaDec, totDec, r.matchType, (r.cuenta || '401-01'), '0|0|0|0|0|0|0|0|'
+              u.baseStr, u.ivaStr, u.totStr, r.matchType, (r.cuenta || '401-01')
             ].join('|'));
           });
         } else if (r.bank) {
-          var bAmt = Number(r.bank.amount || 0);
-          var bSub = Number((bAmt / 1.16).toFixed(2));
-          var bIva = Number((bAmt - bSub).toFixed(2));
+          var uOrph = calcUnifiedDiotBaseAndIva(r.bank.amount);
           lines.push([
             '04', '85', 'SIN_CFDI_XML', (r.bank.concepto || 'DEPOSITO_HUERFANO'), fallbackReceptor,
             (r.bank.id + '_' + (r.bank.ref || 'S/R')), (r.bank.fecha || ''), 'SPEI_SIN_XML',
-            Math.round(bSub), bSub.toFixed(2), bIva.toFixed(2), bAmt.toFixed(2),
-            'HUERFANO_SIN_CFDI', (r.cuenta || '205-01'), '0|0|0|0|0|0|0|0|'
+            uOrph.baseStr, uOrph.ivaStr, uOrph.totStr,
+            'HUERFANO_SIN_CFDI', (r.cuenta || '205-01')
           ].join('|'));
         }
       });
 
-      // 2) Cualquier XML cargado en el alcance actual que aún no haya sido listado por conciliación (ej. PUE no cobrado o solo XML cargados)
+      // 2) Cualquier XML cargado en el alcance actual que aún no haya sido listado por conciliación
       activeXmls.forEach(function(x) {
         if (!emittedUuids[x.uuid]) {
           var emRfc = x.emisorRfc || x.rfc || 'XAXX010101000';
           var recRfc = x.receptorRfc || fallbackReceptor;
-          var subInt = Math.round(Number(x.subtotal || 0));
-          var subDec = Number(x.subtotal || 0).toFixed(2);
-          var ivaDec = Number(x.iva || 0).toFixed(2);
-          var totDec = Number(x.total || 0).toFixed(2);
+          var uXml = calcUnifiedDiotBaseAndIva(x.total);
           var est = x.cobradoBanco === false ? 'PUE_NO_COBRADO' : (x.cobradoBanco === null ? 'SIN_COMPROBAR_BANCOS' : 'REGISTRADO');
           lines.push([
             '04', '85', emRfc, (x.nombre || ''), recRfc, x.uuid, (x.fecha || ''), (x.metodo || 'PUE'),
-            subInt, subDec, ivaDec, totDec, est, '401-01', '0|0|0|0|0|0|0|0|'
+            uXml.baseStr, uXml.ivaStr, uXml.totStr, est, '401-01'
           ].join('|'));
         }
       });
@@ -7642,7 +7799,7 @@
     function exportDiotBatchTxt() {
       if (APP_STATE.mode === 'OWN_FILES' && !hasActivePaidOrMasterLicense()) {
         if ($('stripePricingModal')) $('stripePricingModal').classList.remove('hidden');
-        showToast('Activa tu licencia para exportar la Carga Batch DIOT.');
+        showToast('Activa tu licencia para exportar la Cédula DIOT (.TXT).');
         return;
       }
       var lines = buildDiotBatchLinesFromCurrentState();
@@ -7654,11 +7811,11 @@
       var blob = new Blob([lines.join('\r\n')], { type: 'text/plain;charset=utf-8;' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = isDemo ? 'SOLVO_TAX_DEMO_Carga_Batch_DIOT_SAT.txt' : 'SOLVO_TAX_Carga_Batch_DIOT_SAT.txt';
+      a.download = isDemo ? 'SOLVO_TAX_DEMO_Cedula_DIOT_Operaciones.txt' : 'SOLVO_TAX_Cedula_DIOT_Operaciones.txt';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast('Archivo de Carga Batch DIOT (.TXT) descargado con ' + lines.length + ' operación(es) reales del estado en pantalla.');
+      showToast('Cédula DIOT SOLVO (.TXT) descargada con ' + lines.length + ' operación(es) reales (incluye CFDI y huérfanos con base única total/1.16).');
     }
 
     /* ========================================================================
