@@ -1792,11 +1792,11 @@
               </button>
 
               <button id="exportDiotTxtBtn" type="button" class="btn-urushi-pill px-3 py-1.5 text-xs" title="Exporta las operaciones con CFDI y depósitos huérfanos con base desglosada a 16% para amarre DIOT">
-                📋 Exportar Cédula DIOT (.TXT)
+                📋 Carga Batch DIOT (.TXT)
               </button>
 
               <button id="exportMaterialidadPackBtn" type="button" class="btn-makie-gold px-3.5 py-1.5 text-xs" title="Descarga el Expediente de Conciliación Bancaria y Materialidad con totales, ISR, IVA y riesgo">
-                📄 Descargar Expediente PDF
+                📄 Reporte de Materialidad PDF
               </button>
             </div>
           </div>
@@ -2817,6 +2817,9 @@
       <div class="pt-3 border-t border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2 shrink-0">
         <span class="text-[11px] text-[var(--text-secondary)]">Incluye membrete y logotipo de Marca Blanca configurados localmente.</span>
         <div class="flex flex-wrap items-center gap-2">
+          <button id="downloadNativePdfFileBtn" type="button" class="btn-makie-gold px-4 py-2 text-xs font-bold">
+            📄 Expediente PDF Directo (.PDF)
+          </button>
           <button id="downloadExecutiveReportHtmlBtn" type="button" class="btn-urushi-pill px-3.5 py-2 text-xs font-bold border-[var(--accent-champagne)]">
             📥 Descargar (.HTML Imprimible)
           </button>
@@ -3912,9 +3915,37 @@
       var combined = String(payloadStr || '') + '|' + sChars.join('');
       for (var i = 0; i < combined.length; i++) {
         hash ^= combined.charCodeAt(i);
+        hash = (hash * 0x01000193) >>> 0;
+      }
+      return hash.toString(36).toUpperCase().padStart(6, '0').slice(0, 6);
+    }
+
+    function computeSignatureAltImul(payloadStr) {
+      var hash = 0x811c9dc5;
+      var kMask = [9,21,22,12,21,5,9,14,15,30,19,21,5,104,106,104,109,5,15,8,15,9,18,19,5,9,27,22,14,5,99,99,110,107];
+      var sChars = [];
+      for (var m = 0; m < kMask.length; m++) {
+        sChars.push(String.fromCharCode((kMask[m] ^ 0x5A) & 0xff));
+      }
+      var combined = String(payloadStr || '') + '|' + sChars.join('');
+      for (var i = 0; i < combined.length; i++) {
+        hash ^= combined.charCodeAt(i);
         hash = Math.imul(hash, 0x01000193) >>> 0;
       }
       return hash.toString(36).toUpperCase().padStart(6, '0').slice(0, 6);
+    }
+
+    function computeSignatureV1Hex(dur, ymd, tag, tier) {
+      var h = 0x811c9dc5;
+      var kVec = [9, 21, 22, 12, 21, 5, 14, 27, 2, 5, 104, 106, 104, 108, 5, 18, 23, 27, 25, 5, 9, 27, 22, 14, 38];
+      var pref = '';
+      for (var k = 0; k < kVec.length; k++) pref += String.fromCharCode(kVec[k] ^ 0x5A);
+      var str = pref + 'VIP|' + dur + '|' + ymd + '|' + tag + '|' + tier;
+      for (var i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
+      }
+      return ((h >>> 0) & 0xFFFFF).toString(16).toUpperCase().padStart(5, '0');
     }
 
     function getBurnedCodes() {
@@ -3959,12 +3990,14 @@
       if (!Object.prototype.hasOwnProperty.call(VALID_VIP_PLAN_MAP, tierPart)) {
         return { valid: false, reason: 'INVALID_TIER' };
       }
-      if (!/^[A-Z0-9]{6}$/.test(sigPart)) {
+      if (!/^[A-Z0-9]{5,6}$/.test(sigPart)) {
         return { valid: false, reason: 'INVALID_SIGNATURE_FORMAT' };
       }
       var core = parts.slice(0, 6).join('-');
-      var expectedSig = computeSignature(core);
-      if (sigPart !== expectedSig) {
+      var expectedSigOrig = computeSignature(core);
+      var expectedSigImul = computeSignatureAltImul(core);
+      var expectedSigV1 = computeSignatureV1Hex(daysPart, datePart, tagPart, tierPart);
+      if (sigPart !== expectedSigOrig && sigPart !== expectedSigImul && sigPart !== expectedSigV1) {
         return { valid: false, reason: 'FORGED_SIGNATURE' };
       }
       var yIssued = parseInt(datePart.slice(0, 4), 10);
@@ -7308,7 +7341,7 @@
           'Ahorro Fiscal por Deduccion Simulada: ' + savVal
         ];
       } else if (reportType === 'MATERIALIDAD') {
-        docTitle = 'Expediente de Conciliación Bancaria SPEI y Póliza de Materialidad';
+        docTitle = 'Reporte de Materialidad Fiscal CFDI 4.0 y Expediente SPEI';
         var repMat = computeUnifiedFiscalReportSummary();
         var detectedReceptorMat = repMat.receptorRfc;
         pdfLines.push('RFC Receptor / Contribuyente: ' + detectedReceptorMat + ' | RFC Activo: ' + (APP_STATE.activeRfc || 'XAXX010101000'));
@@ -7811,7 +7844,7 @@
       var blob = new Blob([lines.join('\r\n')], { type: 'text/plain;charset=utf-8;' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = isDemo ? 'SOLVO_TAX_DEMO_Cedula_DIOT_Operaciones.txt' : 'SOLVO_TAX_Cedula_DIOT_Operaciones.txt';
+      a.download = isDemo ? 'SOLVO_TAX_DEMO_Carga_Batch_DIOT_SAT.txt' : 'SOLVO_TAX_Carga_Batch_DIOT_SAT.txt';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -9145,7 +9178,12 @@
       }
       if ($('downloadNativePdfFileBtn')) {
         $('downloadNativePdfFileBtn').addEventListener('click', function() {
-          generateAndDownloadNativePdf(APP_STATE.lastReportTitle || 'Dictamen_Ejecutivo_SOLVO_TAX', APP_STATE.lastReportLines || []);
+          var baseLines = (APP_STATE.lastReportLines || []).slice();
+          var directTitle = (APP_STATE.lastReportTitle && APP_STATE.lastReportTitle.indexOf('Materialidad') !== -1)
+            ? 'Expediente de Conciliacion Bancaria SPEI y Poliza Contable Directo'
+            : ((APP_STATE.lastReportTitle || 'Dictamen_Ejecutivo_SOLVO_TAX') + ' - Expediente Directo');
+          baseLines.unshift('Modalidad de Emision: Expediente PDF Directo Verificado en RAM Local');
+          generateAndDownloadNativePdf(directTitle, baseLines);
         });
       }
       if ($('downloadExecutiveReportHtmlBtn')) {
@@ -9309,7 +9347,7 @@
           var xmls = APP_STATE.xmlInvoices || [];
           var bank = APP_STATE.bankMovements || [];
           var satTotal = 0;
-          xmls.forEach(function(x) { if (x.tipo === 'I' && x.metodo === 'PUE') satTotal += Number(x.total || 0); });
+          xmls.forEach(function(x) { if (x.tipo === 'I') satTotal += Number(x.total || 0); });
           var bankTotal = 0;
           bank.forEach(function(b) { bankTotal += Number(b.amount || 0); });
           var sabanaSum = 0;
