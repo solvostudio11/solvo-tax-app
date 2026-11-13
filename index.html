@@ -1094,9 +1094,9 @@
             </div>
             <ul class="space-y-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-shoji)]">
               <li>✓ <strong>Exclusivo para 1 RFC y 1 dispositivo (1 de 1)</strong></li>
+              <li>✓ <strong>1 reemplazo controlado de RFC por ciclo</strong> (con confirmación expresa y limpieza de datos previos)</li>
               <li>✓ Conciliación Bancaria <strong>SPEI 1 a 5 + Terminales</strong></li>
               <li>✓ Auditoría SAT de <strong>PPD sin REP y Lista 69-B</strong></li>
-              <li>✓ Calculadora Fiscal + Cotizador CFDI 4.0</li>
               <li>✓ Vigencia de 32 días (1 equipo en local, cero nube)</li>
             </ul>
           </div>
@@ -2763,6 +2763,22 @@
         <button id="closeNewClientModalBtn" type="button" class="btn-urushi-pill px-2.5 py-1 text-xs">✕</button>
       </div>
 
+      <div id="controlledRfcReplacementBox" class="hidden shoji-panel p-3.5 space-y-2 border border-[var(--status-amber)] bg-[var(--status-amber)]/10 text-xs">
+        <div class="flex items-center justify-between gap-2">
+          <strong class="text-[var(--status-amber)] font-mono-num text-[11px]">⚠️ REEMPLAZO CONTROLADO DE RFC ÚNICO (PLAN PERSONAL $199 · LÍMITE: 1 POR CICLO)</strong>
+          <span id="controlledRfcQuotaBadge" class="badge-amber px-2 py-0.5 rounded text-[9px] font-mono-num font-bold">0 de 1 usado</span>
+        </div>
+        <p id="controlledRfcExplainText" class="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          Tu Plan Personal ($199) incluye <strong>1 RFC único</strong> sin rotación multi-RFC. Si cometiste un error de captura, puedes reemplazar tu RFC registrado (<strong id="controlledRfcCurrentLabel" class="font-mono-num text-[var(--text-primary)]">SOL2106158K9</strong>) <strong>una sola vez por ciclo de licencia</strong>. Al hacerlo, se limpiarán en $0.00 los XML y movimientos bancarios del RFC anterior.
+        </p>
+        <label class="flex items-start gap-2 pt-1 cursor-pointer select-none">
+          <input id="confirmControlledRfcReplaceChk" type="checkbox" class="mt-0.5 accent-[#C8B49C] cursor-pointer" />
+          <span class="text-[11px] font-semibold text-[var(--text-primary)]">
+            Confirmo expresamente reemplazar el RFC anterior, limpiar todos sus datos cargados en $0.00 y fijar este nuevo RFC único por el resto del ciclo (1 de 1).
+          </span>
+        </label>
+      </div>
+
       <div class="space-y-3 text-xs">
         <div>
           <label class="block text-[11px] text-[var(--text-secondary)] mb-1">Nombre o Razón Social:</label>
@@ -3905,10 +3921,10 @@
     }
 
     var VALID_VIP_PLAN_MAP = {
-      '199':   { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
-      'C199':  { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
-      '1D1R':  { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
-      '2D1R':  { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
+      '199':   { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (1 reemplazo controlado por ciclo · Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
+      'C199':  { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (1 reemplazo controlado por ciclo · Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
+      '1D1R':  { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (1 reemplazo controlado por ciclo · Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
+      '2D1R':  { name: 'Plan Personal 1 RFC ($199)', cap: '1 RFC Activo (1 reemplazo controlado por ciclo · Sin Cartera Multi-RFC) · 1 Dispositivo (1 de 1)', maxDev: 1, maxRfc: 1 },
       '349':   { name: 'Plan Pro Multi-RFC ($349)', cap: 'Cartera Multi-RFC · Hasta 3 Dispositivos (3 equipos)', maxDev: 3, maxRfc: 999 },
       'P349':  { name: 'Plan Pro Multi-RFC ($349)', cap: 'Cartera Multi-RFC · Hasta 3 Dispositivos (3 equipos)', maxDev: 3, maxRfc: 999 },
       '3DUR':  { name: 'Plan Pro Multi-RFC ($349)', cap: 'Cartera Multi-RFC · Hasta 3 Dispositivos (3 equipos)', maxDev: 3, maxRfc: 999 },
@@ -3943,6 +3959,57 @@
         return APP_STATE.clients[0].rfc;
       }
       return APP_STATE.activeRfc || 'SOL2106158K9';
+    }
+
+    function getPersonalRfcReplacementRecord() {
+      var lic = getActiveLicense();
+      var cycleKey = (lic && lic.key) ? lic.key : 'DEFAULT_CYCLE';
+      var map = {};
+      try { map = JSON.parse(getPersistentItem('solvo_tax_2027_rfc_repl_cycle_v1') || '{}'); } catch (e) {}
+      return map[cycleKey] || { used: 0, oldRfc: null, newRfc: null, at: null };
+    }
+
+    function recordPersonalRfcReplacementInCycle(oldRfc, newRfc) {
+      var lic = getActiveLicense();
+      var cycleKey = (lic && lic.key) ? lic.key : 'DEFAULT_CYCLE';
+      var map = {};
+      try { map = JSON.parse(getPersistentItem('solvo_tax_2027_rfc_repl_cycle_v1') || '{}'); } catch (e) {}
+      var prev = map[cycleKey] || { used: 0 };
+      map[cycleKey] = {
+        used: (prev.used || 0) + 1,
+        oldRfc: oldRfc,
+        newRfc: newRfc,
+        at: Date.now()
+      };
+      setPersistentItem('solvo_tax_2027_rfc_repl_cycle_v1', JSON.stringify(map));
+      return map[cycleKey];
+    }
+
+    function configureNewClientModalForCurrentPlan() {
+      var singlePlan = isSingleRfcPersonalPlanActive();
+      var replRec = getPersonalRfcReplacementRecord();
+      var box = $('controlledRfcReplacementBox');
+      var chk = $('confirmControlledRfcReplaceChk');
+      var curLbl = $('controlledRfcCurrentLabel');
+      var quotaBadge = $('controlledRfcQuotaBadge');
+      var btnSave = $('saveNewClientBtn');
+      if (chk) chk.checked = false;
+      if (singlePlan) {
+        if (box) box.classList.remove('hidden');
+        if (curLbl) curLbl.textContent = getPrimaryLockedRfcForPersonalPlan();
+        if (quotaBadge) {
+          quotaBadge.textContent = (replRec.used || 0) + ' de 1 usado en este ciclo';
+          quotaBadge.className = (replRec.used >= 1 ? 'badge-crimson' : 'badge-amber') + ' px-2 py-0.5 rounded text-[9px] font-mono-num font-bold';
+        }
+        if (btnSave) {
+          btnSave.textContent = replRec.used >= 1
+            ? '🔒 Reemplazo de RFC Agotado en este Ciclo (1 de 1)'
+            : '🔄 Confirmar Reemplazo Controlado (1 de 1) y Limpiar Datos Previos';
+        }
+      } else {
+        if (box) box.classList.add('hidden');
+        if (btnSave) btnSave.textContent = 'Guardar RFC y Calcular Fecha Límite SAT';
+      }
     }
 
     function computeSignature(payloadStr) {
@@ -4564,9 +4631,18 @@
             : ('Plan activo con cupo de ' + maxDevPlan + ' dispositivo(s) (' + usedDevPlan + ' de ' + maxDevPlan + '). Licencia válida en los equipos de tu plan: 1 en Personal, 3 en Pro, 4 en Anual. Cada equipo trabaja en local, cero nube. Paquete cifrado para llevar tu cierre de un equipo a otro.');
           $('licModalPlanCopyText').innerHTML = '<strong>3. Trabajo local y traslado entre equipos:</strong> <em>' + esc(planSpecificSentence) + '</em>';
         }
+        if ($('openAddClientModalBtn')) {
+          if (!lic.isMaster && maxDevPlan === 1) {
+            var rRecBtn = getPersonalRfcReplacementRecord();
+            $('openAddClientModalBtn').textContent = rRecBtn.used >= 1 ? '🔒 RFC Fijo (1/1)' : '🔄 Reemplazar RFC Único (1/ciclo)';
+          } else {
+            $('openAddClientModalBtn').textContent = '+ Guardar RFC';
+          }
+        }
         if ($('licModalRfcBenefitItem')) {
           if (!lic.isMaster && maxDevPlan === 1) {
-            $('licModalRfcBenefitItem').innerHTML = '✓ <strong>Capacidad de 1 RFC Activo y 1 Dispositivo (1 de 1)</strong> con guardado automático local (el cambio o alta de un 2º RFC está bloqueado en Plan Personal $199)';
+            var rRec = getPersonalRfcReplacementRecord();
+            $('licModalRfcBenefitItem').innerHTML = '✓ <strong>Capacidad de 1 RFC Activo y 1 Dispositivo (1 de 1)</strong> · Incluye <strong>1 reemplazo controlado de RFC por ciclo</strong> con confirmación expresa y limpieza de datos previos (Usados: <strong>' + (rRec.used || 0) + ' de 1</strong>)';
           } else if (!lic.isMaster && maxDevPlan === 4) {
             $('licModalRfcBenefitItem').innerHTML = '✓ <strong>Cartera Multi-RFC y Marca Blanca en hasta 4 dispositivos (' + usedDevPlan + ' de 4)</strong> con guardado automático local';
           } else {
@@ -9213,14 +9289,18 @@
         }
       });
 
-      // 21. Cartera Multi-RFC y Marca Blanca (Con bloqueo de 2º RFC en Plan Personal $199)
+      // 21. Cartera Multi-RFC y Marca Blanca (Con bloqueo de 2º RFC y Reemplazo Controlado 1/ciclo en Plan Personal $199)
       ['openAddClientModalBtn', 'addClientFromDespachoBtn'].forEach(function(id) {
         if ($(id)) {
           $(id).addEventListener('click', function() {
             if (isSingleRfcPersonalPlanActive() && APP_STATE.clients && APP_STATE.clients.length >= 1) {
-              showToast('🔒 Límite de Plan Personal ($199 · 1 RFC): Tu plan incluye únicamente 1 RFC activo (' + getPrimaryLockedRfcForPersonalPlan() + '). El registro de un segundo RFC está bloqueado; actualiza a Plan Pro ($349) o Anual ($2,490).');
-              return;
+              var replRec = getPersonalRfcReplacementRecord();
+              if (replRec.used >= 1) {
+                showToast('🔒 Reemplazo Controlado Agotado (1 de 1 en este ciclo): Ya reemplazaste tu RFC único una vez en este periodo. Tu RFC activo (' + getPrimaryLockedRfcForPersonalPlan() + ') permanece fijo por el resto de la vigencia.');
+                return;
+              }
             }
+            configureNewClientModalForCurrentPlan();
             if ($('newClientModal')) $('newClientModal').classList.remove('hidden');
           });
         }
@@ -9232,7 +9312,10 @@
             var lockedRfc = getPrimaryLockedRfcForPersonalPlan();
             e.target.value = lockedRfc;
             APP_STATE.activeRfc = lockedRfc;
-            showToast('🔒 Límite de Plan Personal ($199 · 1 RFC): El segundo RFC (' + chosenRfc + ') está bloqueado. Tu plan autoriza 1 RFC (' + lockedRfc + ').');
+            var replRecSel = getPersonalRfcReplacementRecord();
+            showToast(replRecSel.used >= 1
+              ? ('🔒 Límite de Plan Personal ($199 · 1 RFC): El segundo RFC (' + chosenRfc + ') está bloqueado y ya utilizaste tu reemplazo controlado (1 de 1) en este ciclo.')
+              : ('🔒 Límite de Plan Personal ($199 · 1 RFC): El segundo RFC (' + chosenRfc + ') está bloqueado. Si capturaste mal tu RFC único, usa "🔄 Reemplazar RFC Único (1/ciclo)" para sustituirlo limpiando los datos anteriores.'));
             return;
           }
           APP_STATE.activeRfc = chosenRfc;
@@ -9267,9 +9350,37 @@
       if ($('saveNewClientBtn')) {
         $('saveNewClientBtn').addEventListener('click', function() {
           var name = ($('newClientNameInput') ? $('newClientNameInput').value.trim() : '') || 'Empresa Registrada';
-          var rfc = ($('newClientRfcInput') ? $('newClientRfcInput').value.trim().toUpperCase() : '') || 'XAXX010101000';
-          if (isSingleRfcPersonalPlanActive() && APP_STATE.clients && APP_STATE.clients.length >= 1 && rfc !== getPrimaryLockedRfcForPersonalPlan()) {
-            showToast('🔒 Límite de Plan Personal ($199 · 1 RFC): El segundo RFC (' + rfc + ') queda bloqueado. Tu plan autoriza únicamente 1 RFC (' + getPrimaryLockedRfcForPersonalPlan() + ').');
+          var rfc = ($('newClientRfcInput') ? $('newClientRfcInput').value.trim().toUpperCase() : '') || '';
+          if (!rfc || rfc.length < 12) {
+            showToast('Ingresa un RFC válido de 12 o 13 caracteres.');
+            return;
+          }
+          if (isSingleRfcPersonalPlanActive() && APP_STATE.clients && APP_STATE.clients.length >= 1) {
+            var oldRfc = getPrimaryLockedRfcForPersonalPlan();
+            var replRecNow = getPersonalRfcReplacementRecord();
+            if (replRecNow.used >= 1) {
+              showToast('🔒 Límite de Reemplazo Agotado (1 de 1 en este ciclo): El RFC único (' + oldRfc + ') ya fue reemplazado en este periodo y permanece fijo hasta el fin del ciclo.');
+              return;
+            }
+            var chkConfirm = $('confirmControlledRfcReplaceChk');
+            if (!chkConfirm || !chkConfirm.checked) {
+              showToast('⚠️ Confirmación requerida: Marca la casilla para autorizar el reemplazo controlado de ' + oldRfc + ' por ' + rfc + ' y la limpieza en $0.00 de los datos del RFC anterior.');
+              return;
+            }
+            limpiarEspacioEnCero(true);
+            removePersistentItem(STORAGE_KEYS.WORKSPACE_STATE);
+            APP_STATE.clients[0] = { rfc: rfc, name: name, regime: '601 / 626 · RFC Único Reemplazado (1/1)', status: 'RFC Único Fijo (1/1)' };
+            APP_STATE.activeRfc = rfc;
+            recordPersonalRfcReplacementInCycle(oldRfc, rfc);
+            setPersistentItem(STORAGE_KEYS.CLIENTS_LIST, JSON.stringify(APP_STATE.clients));
+            if ($('newClientNameInput')) $('newClientNameInput').value = '';
+            if ($('newClientRfcInput')) $('newClientRfcInput').value = '';
+            if (chkConfirm) chkConfirm.checked = false;
+            refreshLicenseUI();
+            renderDespachoClientsTable();
+            renderAllPanels();
+            if ($('newClientModal')) $('newClientModal').classList.add('hidden');
+            showToast('✓ Reemplazo controlado aplicado (1 de 1 en este ciclo): Datos de ' + oldRfc + ' limpiados en $0.00 y nuevo RFC único ' + rfc + ' fijado. Vencimiento SAT: ' + calculateSatDeadlineBySixthDigit(rfc));
             return;
           }
           APP_STATE.clients.push({ rfc: rfc, name: name, regime: '601 / 626 · Activo', status: 'Al Corriente' });
