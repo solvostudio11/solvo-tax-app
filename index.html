@@ -3969,19 +3969,58 @@
       return map[cycleKey] || { used: 0, oldRfc: null, newRfc: null, at: null };
     }
 
+    function renderGlobalSyncAndRfcBitacora() {
+      var box = $('solvoSyncHistoryLog');
+      if (!box) return;
+      var list = [];
+      try { list = JSON.parse(getPersistentItem(STORAGE_KEYS.SYNC_HISTORY) || '[]'); } catch (e) { list = []; }
+      if (!Array.isArray(list) || list.length === 0) return;
+      box.innerHTML = list.map(function(entry) {
+        if (entry && entry.type === 'RFC_REPLACE') {
+          return '<div class="p-2 rounded bg-[var(--bg-abyss)] border border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2">' +
+            '<span><strong class="text-[var(--status-jade)]">✓ Reemplazo de RFC Único (1/1)</strong> · RFC anterior: <strong>' + esc(entry.oldRfc || '-') + '</strong> ➔ RFC nuevo: <strong>' + esc(entry.newRfc || '-') + '</strong> (0 XML, 0 CSV · $0.00)</span>' +
+            '<span class="text-[10px] text-[var(--text-muted)]">Fecha: ' + esc(entry.date || '-') + '</span>' +
+          '</div>';
+        }
+        return '<div class="p-2 rounded bg-[var(--bg-abyss)] border border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2">' +
+          '<span><strong class="text-[var(--status-jade)]">✓ ' + esc(entry.mode) + '</strong> · RFC: <strong>' + esc(entry.rfc) + '</strong> (' + esc(entry.xmlCount) + ' XML, ' + esc(entry.bankCount) + ' CSV)</span>' +
+          '<span class="text-[10px] text-[var(--text-muted)]">' + esc(entry.date) + '</span>' +
+        '</div>';
+      }).join('');
+    }
+
     function recordPersonalRfcReplacementInCycle(oldRfc, newRfc) {
       var lic = getActiveLicense();
       var cycleKey = (lic && lic.key) ? lic.key : 'DEFAULT_CYCLE';
       var map = {};
       try { map = JSON.parse(getPersistentItem('solvo_tax_2027_rfc_repl_cycle_v1') || '{}'); } catch (e) {}
       var prev = map[cycleKey] || { used: 0 };
+      var nowTs = Date.now();
+      var dateFormatted = formatExactDateTime24h(nowTs);
       map[cycleKey] = {
         used: (prev.used || 0) + 1,
         oldRfc: oldRfc,
         newRfc: newRfc,
-        at: Date.now()
+        at: nowTs,
+        dateStr: dateFormatted
       };
       setPersistentItem('solvo_tax_2027_rfc_repl_cycle_v1', JSON.stringify(map));
+
+      var hist = [];
+      try { hist = JSON.parse(getPersistentItem(STORAGE_KEYS.SYNC_HISTORY) || '[]'); } catch (e) { hist = []; }
+      if (!Array.isArray(hist)) hist = [];
+      hist.unshift({
+        type: 'RFC_REPLACE',
+        mode: 'Reemplazo Controlado de RFC Único (1/1)',
+        oldRfc: oldRfc,
+        newRfc: newRfc,
+        rfc: oldRfc + ' ➔ ' + newRfc,
+        xmlCount: 0,
+        bankCount: 0,
+        date: dateFormatted
+      });
+      setPersistentItem(STORAGE_KEYS.SYNC_HISTORY, JSON.stringify(hist.slice(0, 15)));
+      renderGlobalSyncAndRfcBitacora();
       return map[cycleKey];
     }
 
@@ -4642,7 +4681,10 @@
         if ($('licModalRfcBenefitItem')) {
           if (!lic.isMaster && maxDevPlan === 1) {
             var rRec = getPersonalRfcReplacementRecord();
-            $('licModalRfcBenefitItem').innerHTML = '✓ <strong>Capacidad de 1 RFC Activo y 1 Dispositivo (1 de 1)</strong> · Incluye <strong>1 reemplazo controlado de RFC por ciclo</strong> con confirmación expresa y limpieza de datos previos (Usados: <strong>' + (rRec.used || 0) + ' de 1</strong>)';
+            var bitacoraNote = (rRec && rRec.used >= 1 && rRec.oldRfc && rRec.newRfc)
+              ? (' · <span class="font-mono-num text-[var(--accent-champagne-bright)]">Bitácora: ' + esc(rRec.dateStr || formatExactDateTime24h(rRec.at)) + ' | RFC anterior: ' + esc(rRec.oldRfc) + ' ➔ RFC nuevo: ' + esc(rRec.newRfc) + '</span>')
+              : '';
+            $('licModalRfcBenefitItem').innerHTML = '✓ <strong>Capacidad de 1 RFC Activo y 1 Dispositivo (1 de 1)</strong> · Incluye <strong>1 reemplazo controlado de RFC por ciclo</strong> con confirmación expresa y limpieza de datos previos (Usados: <strong>' + (rRec.used || 0) + ' de 1</strong>)' + bitacoraNote;
           } else if (!lic.isMaster && maxDevPlan === 4) {
             $('licModalRfcBenefitItem').innerHTML = '✓ <strong>Cartera Multi-RFC y Marca Blanca en hasta 4 dispositivos (' + usedDevPlan + ' de 4)</strong> con guardado automático local';
           } else {
@@ -9699,17 +9741,7 @@
       var pendingDecodedSolvoPkg = null;
 
       function renderSyncHistoryLog() {
-        var box = $('solvoSyncHistoryLog');
-        if (!box) return;
-        var list = [];
-        try { list = JSON.parse(getPersistentItem(STORAGE_KEYS.SYNC_HISTORY) || '[]'); } catch (e) { list = []; }
-        if (!Array.isArray(list) || list.length === 0) return;
-        box.innerHTML = list.map(function(entry) {
-          return '<div class="p-2 rounded bg-[var(--bg-abyss)] border border-[var(--border-shoji)] flex flex-wrap items-center justify-between gap-2">' +
-            '<span><strong class="text-[var(--status-jade)]">✓ ' + esc(entry.mode) + '</strong> · RFC: <strong>' + esc(entry.rfc) + '</strong> (' + esc(entry.xmlCount) + ' XML, ' + esc(entry.bankCount) + ' CSV)</span>' +
-            '<span class="text-[10px] text-[var(--text-muted)]">' + esc(entry.date) + '</span>' +
-          '</div>';
-        }).join('');
+        renderGlobalSyncAndRfcBitacora();
       }
       renderSyncHistoryLog();
 
