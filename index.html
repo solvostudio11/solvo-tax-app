@@ -681,10 +681,16 @@
           <kbd class="font-mono-num text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-abyss)] text-[var(--accent-champagne)] border border-[var(--border-subtle)]">⌘K</kbd>
         </button>
 
-        <!-- Botón Visible de Sincronización Cero Nube (Página 6 Punto 1) -->
-        <button id="openSyncCapsuleModalBtn" type="button" class="btn-urushi-pill px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] font-mono-num font-bold flex items-center gap-1 border-[var(--accent-champagne)] text-[var(--accent-champagne-bright)]" title="Compartir / Llevar tu cierre a otro equipo con paquete cifrado .solvo">
+        <!-- Estado normal de guardado local (Página 11) -->
+        <span id="headerLocalSaveStatusBadge" class="hidden xl:inline-flex badge-jade px-2.5 py-1 rounded-full text-[10px] font-mono-num font-bold items-center gap-1" title="Tus XML y tu estado de cuenta se procesan en la memoria de tu navegador y nunca se envían a ningún servidor.">
+          <span>✓</span>
+          <span>Guardado en este equipo · Sin nube</span>
+        </span>
+
+        <!-- Botón Visible de Sincronización Cero Nube (Página 11) -->
+        <button id="openSyncCapsuleModalBtn" type="button" class="btn-urushi-pill px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] font-mono-num font-bold flex items-center gap-1 border-[var(--accent-champagne)] text-[var(--accent-champagne-bright)]" title="Lleva tu cierre a otro equipo con paquete cifrado .solvo">
           <span>📦</span>
-          <span class="hidden sm:inline">Compartir / Llevar a otro equipo</span>
+          <span class="hidden sm:inline">Compartir con otro equipo</span>
           <span class="sm:hidden">Compartir</span>
         </button>
 
@@ -778,14 +784,20 @@
             Cruza tus estados de cuenta bancarios con miles de XML del SAT, separa comisiones de terminales y arma tu cierre anual de 12 meses <strong class="text-[var(--text-primary)]">100% en la memoria RAM de tu equipo</strong>. Sin exponer tu <code class="font-mono-num text-[var(--accent-champagne-bright)]">e.firma</code> ni tus facturas en servidores ajenos.
           </p>
 
-          <!-- COPY OFICIAL PÁGINA 8 PUNTO 1 Y 2: OFFLINE Y COMPARTIR -->
-          <div class="shoji-panel p-3.5 border border-[var(--accent-champagne)]/50 space-y-1.5">
+          <!-- COPY OFICIAL PÁGINAS 11 Y 12: OFFLINE, MULTIDISPOSITIVO Y COPY HONESTO INTERINO -->
+          <div class="shoji-panel p-3.5 border border-[var(--accent-champagne)]/50 space-y-2">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <strong class="text-xs sm:text-sm text-[var(--accent-champagne-bright)]">Trabaja sin internet. Comparte sin nube.</strong>
-              <span class="badge-jade px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono-num font-bold">100% OFFLINE · PAQUETE CIFRADO · CERO NUBE</span>
+              <span class="badge-jade px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono-num font-bold">GUARDADO EN ESTE EQUIPO · SIN NUBE</span>
             </div>
             <p class="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Todo se procesa en tu equipo. Cuando necesitas moverte, exportas un paquete cifrado (<code class="font-mono-num text-[var(--accent-champagne-bright)]">.solvo</code>) y lo abres en otro. Tus XML nunca suben a un servidor.
+              Funciona sin internet una vez abierta la sesión. Para uso 100% offline desde el arranque, instala la versión de escritorio o móvil.
+            </p>
+            <p class="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Lleva tu cierre de la oficina a tu casa o a tu celular con un paquete cifrado de un solo archivo. Sin subir tus XML a ningún servidor.
+            </p>
+            <p class="text-[11px] text-[var(--text-muted)] leading-relaxed border-t border-[var(--border-shoji)] pt-1.5">
+              Tus XML y tu estado de cuenta se procesan en la memoria de tu navegador y nunca se envían a ningún servidor. Mientras mantengas esta pestaña abierta, puedes seguir trabajando aunque se caiga tu conexión.
             </p>
           </div>
 
@@ -1116,7 +1128,7 @@
               </div>
             </div>
             <ul class="space-y-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-shoji)]">
-              <li>✓ <strong>Licencia válida en hasta 3 equipos. Cada equipo trabaja en local, cero nube. Paquete cifrado para llevar tu cierre de un equipo a otro.</strong></li>
+              <li>✓ <strong>Licencia válida en hasta 3 equipos · Cada equipo trabaja en local, cero nube · Paquete cifrado para llevar tu cierre de un equipo a otro</strong></li>
               <li>✓ <strong>Tu cierre en tus 3 equipos, con paquete cifrado.</strong> Sin nube de por medio.</li>
               <li>✓ <strong>Precierre Anual de 12 Meses</strong> + Sábana Excel</li>
               <li>✓ <strong>Ajuste Anual de Nómina (CFDI Tipo N)</strong></li>
@@ -1146,8 +1158,8 @@
               </div>
             </div>
             <ul class="space-y-2 text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-shoji)]">
-              <li>✓ <strong>RFCs y Empresas ILIMITADOS</strong> todo el año</li>
-              <li>✓ <strong>Tu cierre en tus 4 equipos, con paquete cifrado.</strong> Sin nube de por medio.</li>
+              <li>✓ <strong>Licencia válida en hasta 3 equipos · Cada equipo trabaja en local, cero nube · Paquete cifrado para llevar tu cierre de un equipo a otro</strong></li>
+              <li>✓ <strong>RFCs y Empresas ILIMITADOS</strong> todo el año (hasta 4 equipos en Plan Anual)</li>
               <li>✓ Cierre Anual 12 Meses + Nómina + Marca Blanca</li>
               <li>✓ Calendario automático por 6to dígito del RFC</li>
             </ul>
@@ -1166,7 +1178,10 @@
         <svg viewBox="248 671 1902 1063" class="h-9 w-auto shrink-0" role="img" aria-label="SOLVO STUDIO Logo Oficial">
           <use href="#solvo-logo-full-3tier"></use>
         </svg>
-        <span class="text-[11px]">© 2026–2027 SOLVO STUDIO (スタジオ). Todos los derechos reservados.</span>
+        <div>
+          <span class="text-[11px] block">© 2026–2027 SOLVO STUDIO (スタジオ). Todos los derechos reservados.</span>
+          <span class="text-[11px] text-[var(--text-secondary)] block mt-0.5">Tus XML, tus estados de cuenta y tu contraseña nunca salen de tus equipos sin cifrar. SOLVO no tiene servidor donde guardarlos.</span>
+        </div>
       </div>
       <div class="flex flex-wrap items-center justify-center gap-4 font-mono-num text-xs">
         <a href="https://www.instagram.com/solvo.studio?dlrf=MTFlNTl5bnI3cmozOQ==" target="_blank" rel="noopener noreferrer" class="text-[var(--accent-champagne)] hover:text-[var(--accent-champagne-bright)] transition">
@@ -2272,7 +2287,7 @@
           <div class="solvo-top-subbar flex flex-wrap items-center justify-between gap-3">
             <div>
               <span class="font-studio text-[9px] text-[var(--accent-champagne)] block">MÓDULO 05 · CONFIGURACIÓN, DISPOSITIVOS Y COMPARTIR</span>
-              <h2 class="text-base sm:text-lg font-extrabold mt-0.5">Lleva tu cierre a otro equipo. De un solo tajo, sin nube.</h2>
+              <h2 class="text-base sm:text-lg font-extrabold mt-0.5">Lleva tu cierre a otro equipo</h2>
               <p class="text-xs text-[var(--text-secondary)]">Tu paquete viaja cifrado con tu contraseña. SOLVO nunca lo ve.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -2350,7 +2365,7 @@
                 </div>
 
                 <button id="previewSolvoEncryptedPkgBtn" type="button" class="btn-urushi-pill w-full py-2.5 px-4 text-xs font-extrabold border-[var(--accent-champagne)] text-[var(--accent-champagne-bright)]">
-                  🔍 Importar paquete (Desencriptar y Ver Vista Previa)
+                  Importar paquete
                 </button>
 
                 <div id="solvoPkgImportErrorBanner" class="hidden p-3 rounded text-[11px] font-mono-num bg-[var(--status-crimson)]/20 border border-[var(--status-crimson)] text-[var(--status-crimson)] font-bold"></div>
@@ -5223,12 +5238,12 @@
             isDemo: false,
             resolved: isResOrphan,
             fecha: r.bank.fecha || '2026-11',
-            rfc: (APP_STATE.activeRfc || 'RFC ACTIVO') + ' · ' + (r.bank.concepto || 'Depósito Bancario'),
+            rfc: 'Sin CFDI',
             type: isResOrphan ? '✓ HUÉRFANO ACLARADO' : 'HUÉRFANO SIN CFDI XML',
             badgeClass: isResOrphan ? 'badge-jade' : 'badge-crimson',
             amount: Number(r.bank.amount || 0),
             canReclassifyPue: false,
-            action: 'Depósito bancario de ' + fmtMXN(r.bank.amount) + ' (Ref: ' + (r.bank.ref || 'S/R') + ') sin factura CFDI 4.0 vinculada. Riesgo de ingreso presunto omitido (Art. 59 Fracc. III CFF).',
+            action: 'Depósito bancario de ' + fmtMXN(r.bank.amount) + ' (Concepto: ' + (r.bank.concepto || 'SPEI') + ', Ref: ' + (r.bank.ref || 'S/R') + ') sin factura CFDI 4.0 vinculada. Riesgo de ingreso presunto omitido (Art. 59 Fracc. III CFF).',
             ctaLabel: '🔍 Emitir / Vincular CFDI',
             whatsappText: 'Solicitud de soporte CFDI para el depósito bancario de ' + fmtMXN(r.bank.amount) + ' (' + (r.bank.concepto || '') + ', Ref: ' + (r.bank.ref || '') + ') detectado sin factura XML.'
           });
@@ -5262,6 +5277,7 @@
           ingresosPueCobrado: 0,
           ingresosPueNoCobrado: 0,
           ppdCobrados: 0,
+          ppdFacturados: 0,
           baseIsrCobrada: 0,
           notasCredito: 0,
           deducciones: 0,
@@ -5330,14 +5346,17 @@
               b.hasAlert = true;
             }
           } else if (x.metodo === 'PPD') {
-            if (x.cobradoBanco === true) {
+            b.ppdFacturados = Number((b.ppdFacturados + sub).toFixed(2));
+            if (x.cobradoBanco !== false) {
               b.ppdCobrados = Number((b.ppdCobrados + sub).toFixed(2));
               b.ivaTrasladado = Number((b.ivaTrasladado + iva).toFixed(2));
-              b.ivaCobradoMes = Number((b.ivaCobradoMes + iva).toFixed(2));
+              if (x.cobradoBanco === true) {
+                b.ivaCobradoMes = Number((b.ivaCobradoMes + iva).toFixed(2));
+                totalIvaCobrado = Number((totalIvaCobrado + iva).toFixed(2));
+              }
               b.totalConIva = Number((b.totalConIva + tot).toFixed(2));
               totalPpdTotal = Number((totalPpdTotal + tot).toFixed(2));
               totalPpdSub = Number((totalPpdSub + sub).toFixed(2));
-              totalIvaCobrado = Number((totalIvaCobrado + iva).toFixed(2));
             }
           }
         }
@@ -5412,13 +5431,14 @@
 
       APP_STATE.annualMonths = monthBuckets;
 
-      // Sincronizar automáticamente la Calculadora Fiscal con la misma base cobrada (Pendiente #3: Sábana = Calculadora = $37,000 -> ISR $407.00)
+      // Sincronizar automáticamente la Calculadora Fiscal y el Termómetro RESICO con la misma función de estado (XML + Bancos)
       var totalBaseCobradaAnual = (bank.length > 0)
         ? Number((totalPueCobradoSub + totalPpdSub).toFixed(2))
-        : Number(totalPueSub.toFixed(2));
+        : Number((totalPueSub + totalPpdSub).toFixed(2));
       if ($('calcIncomeInput')) $('calcIncomeInput').value = String(totalBaseCobradaAnual);
       if ($('calcDeductionsInput')) $('calcDeductionsInput').value = String(totalEgresosSub);
       runTaxCalculator();
+      updateResicoThermometerView();
 
       // Pendiente #4 (8ª Auditoría) + Pendiente #6b (9ª Auditoría):
       // Si bank.length === 0 (sin CSV cargado), nunca afirmar "PUE CUADRADO AL CENTAVO CON BANCOS"; mostrar "SIN COMPROBAR (BANCOS EN $0.00)"
@@ -5735,11 +5755,12 @@
           ? '<span class="badge-amber px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold mr-1">DEMO</span>'
           : '<span class="badge-jade px-1.5 py-0.5 rounded text-[9px] font-mono-num font-bold mr-1">PROPIO</span>';
 
-        var uuidLabel = '— SIN XML VINCULADO —';
-        var rfcSubLabel = '';
+        var uuidLabel = 'Sin CFDI';
+        var rfcSubLabel = 'Emisor: Sin CFDI';
         if (hasMatch) {
           if (isRowLocked) {
             uuidLabel = '🔒 FILA #' + (i + 1) + ' BLOQUEADA (PRUEBA GRATUITA: 3 FILAS LIBRES)';
+            rfcSubLabel = '';
           } else {
             uuidLabel = r.matched.map(function(m) {
               return m.uuid + ' (' + fmtMXN(m.total) + '·' + m.metodo + ')';
@@ -5752,6 +5773,7 @@
           }
         } else if (isRowLocked) {
           uuidLabel = '🔒 FILA #' + (i + 1) + ' BLOQUEADA (ACTIVA LICENCIA PRO)';
+          rfcSubLabel = '';
         }
 
         var badgeCls = hasMatch ? (r.matched.length > 1 || r.feeAmt > 0 ? 'badge-makie' : 'badge-jade') : 'badge-crimson';
@@ -6158,9 +6180,14 @@
       var ppdFacturadoSum = 0;
       for (var m = 0; m < APP_STATE.annualMonths.length; m++) {
         var rm = APP_STATE.annualMonths[m];
-        var pueCobradoMes = (m === 10 && APP_STATE.mode === 'SAMPLE_CASE') ? 242000 : Number(rm.ingresosPue || 0);
+        var pueCobradoMes = (m === 10 && APP_STATE.mode === 'SAMPLE_CASE')
+          ? 242000
+          : Number((rm.ingresosPueCobrado !== undefined && rm.ingresosPueCobrado > 0) ? rm.ingresosPueCobrado : (rm.ingresosPue || 0));
+        var ppdMes = (APP_STATE.mode === 'OWN_FILES')
+          ? Number(rm.ppdFacturados !== undefined ? rm.ppdFacturados : (rm.ppdCobrados || 0))
+          : Number(rm.ppdCobrados || 0);
         pueCobradoSum += pueCobradoMes;
-        ppdFacturadoSum += Number(rm.ppdCobrados || 0);
+        ppdFacturadoSum += ppdMes;
       }
       var annualSum = pueCobradoSum + ppdFacturadoSum;
       var extraSim = parseFloat($('resicoExtraSimInput') ? $('resicoExtraSimInput').value : '0') || 0;
@@ -7158,12 +7185,25 @@
         sumIvaTras += Number(mb.ivaTrasladado || 0);
         sumIvaAcred += Number(mb.ivaAcreditable || 0);
       });
+      var xmlSubDirect = 0, xmlIvaDirect = 0, xmlTotDirect = 0;
+      (execXmls || []).forEach(function(x) {
+        if (x.tipo === 'I') {
+          var s = Number(x.subtotal || 0);
+          var iv = Number(x.iva !== undefined ? x.iva : (s * 0.16));
+          var t = Number(x.total || (s + iv));
+          xmlSubDirect = Number((xmlSubDirect + s).toFixed(2));
+          xmlIvaDirect = Number((xmlIvaDirect + iv).toFixed(2));
+          xmlTotDirect = Number((xmlTotDirect + t).toFixed(2));
+        }
+      });
       var periodBaseCobrada = (novBucket && (novBucket.ingresosPue > 0 || novBucket.ppdCobrados > 0))
         ? Number(novBucket.baseIsrCobrada !== undefined ? novBucket.baseIsrCobrada : (novBucket.ingresosPue + novBucket.ppdCobrados))
-        : sumBaseCobrada;
+        : (sumBaseCobrada > 0 ? sumBaseCobrada : xmlSubDirect);
       var periodIsrRate = (novBucket && novBucket.isrRatePct) ? novBucket.isrRatePct : (APP_STATE.mode === 'SAMPLE_CASE' ? 2.5 : 1.1);
       var periodIsrAmount = (novBucket && novBucket.isrEstimado > 0) ? novBucket.isrEstimado : sumIsrSabana;
-      var periodIvaTras = (novBucket && novBucket.ivaTrasladado > 0) ? novBucket.ivaTrasladado : sumIvaTras;
+      var periodIvaTras = (APP_STATE.mode === 'OWN_FILES' && xmlIvaDirect > 0)
+        ? xmlIvaDirect
+        : ((novBucket && novBucket.ivaTrasladado > 0) ? novBucket.ivaTrasladado : sumIvaTras);
       var periodIvaAcred = (novBucket && novBucket.ivaAcreditable > 0) ? novBucket.ivaAcreditable : sumIvaAcred;
       var periodIvaNeto = Math.max(0, Number((periodIvaTras - periodIvaAcred).toFixed(2)));
       var isrSummaryLine = fmtMXN(periodIsrAmount) + ' (Base cobrada ' + fmtMXN(periodBaseCobrada) + ' x ' + periodIsrRate + '% RESICO)';
@@ -7227,10 +7267,28 @@
       ];
 
       streamLines.push('/F1 7.5 Tf');
-      var maxLines = Math.min(linesArray.length, 48);
+      var wrappedPdfLines = [];
+      for (var wIdx = 0; wIdx < linesArray.length; wIdx++) {
+        var rawLn = String(linesArray[wIdx] || '');
+        if (rawLn.length <= 108) {
+          wrappedPdfLines.push(rawLn);
+        } else {
+          var firstPart = rawLn.slice(0, 108);
+          var restPart = rawLn.slice(108);
+          var splitPos = firstPart.lastIndexOf(' | ');
+          if (splitPos > 45) {
+            wrappedPdfLines.push(rawLn.slice(0, splitPos));
+            wrappedPdfLines.push('   ' + rawLn.slice(splitPos + 3));
+          } else {
+            wrappedPdfLines.push(firstPart);
+            wrappedPdfLines.push('   ' + restPart);
+          }
+        }
+      }
+      var maxLines = Math.min(wrappedPdfLines.length, 54);
       for (var i = 0; i < maxLines; i++) {
-        streamLines.push('0 -11 Td');
-        streamLines.push('(' + toPdfAscii(linesArray[i]).slice(0, 240) + ') Tj');
+        streamLines.push('0 -10.5 Td');
+        streamLines.push('(' + toPdfAscii(wrappedPdfLines[i]).slice(0, 118) + ') Tj');
       }
 
       streamLines.push('0 -18 Td');
@@ -7352,8 +7410,8 @@
         pdfLines.push(repMat.sobrecostoLine);
         pdfLines.push('--- Detalle de Movimientos Bancarios y Póliza de Materialidad ---');
         var rowsHtml = (APP_STATE.reconciliationRows || []).map(function(r) {
-          var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'SIN XML';
-          var emRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return (m.emisorRfc || m.rfc || 'SIN-RFC') + ' (' + (m.nombre || '') + ')'; }).join(' + ') : 'SIN CFDI';
+          var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'Sin CFDI';
+          var emRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return (m.emisorRfc || m.rfc || 'SIN-RFC') + ' (' + (m.nombre || '') + ')'; }).join(' + ') : 'Sin CFDI';
           var recRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.receptorRfc || detectedReceptorMat; }).join(' + ') : detectedReceptorMat;
           pdfLines.push(r.bank.fecha + ' | ' + (r.bank.banco || 'BBVA') + ' | ' + r.bank.concepto + ' | ' + fmtMXN(r.bank.amount) + ' | ' + r.matchType + ' | Cta: ' + (r.cuenta || '401-01'));
           pdfLines.push('  UUID: ' + uuids + ' | RFC Emisor: ' + emRfcs + ' | RFC Receptor: ' + recRfcs);
@@ -7388,12 +7446,16 @@
         pdfLines.push('IVA del Periodo (16%): ' + ivaSummaryLine);
         pdfLines.push('Porcentaje de Riesgo Fiscal: ' + repExec.cleanRiskFormula);
         pdfLines.push(repExec.sobrecostoLine);
-        pdfLines.push('--- Relacion de CFDI Cargados (' + execXmls.length + ' comprobantes) ---');
-        var xmlsDictamenHtml = execXmls.map(function(x) {
+        pdfLines.push('--- Desglose y Total por Cada CFDI Verificado (' + execXmls.length + ' comprobantes | Total CFDI: ' + satBase + ') ---');
+        var xmlsDictamenHtml = execXmls.map(function(x, idxCfdi) {
           var emR = x.emisorRfc || x.rfc || 'XAXX010101000';
           var recR = x.receptorRfc || receptorRfcExec;
-          pdfLines.push('CFDI UUID: ' + x.uuid + ' | Emisor: ' + emR + ' (' + (x.nombre || '') + ') | Receptor: ' + recR + ' | ' + x.metodo + ' | Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = ' + fmtMXN(x.total));
-          return '<li class="py-1 border-b border-[var(--border-shoji)] font-mono-num"><strong>UUID: ' + esc(x.uuid) + '</strong> · Emisor: <strong>' + esc(emR) + '</strong> (' + esc(x.nombre) + ') → Receptor: <strong>' + esc(recR) + '</strong> · ' + esc(x.metodo) + ' · Sub: ' + fmtMXN(x.subtotal) + ' + IVA: ' + fmtMXN(x.iva) + ' = <strong>' + fmtMXN(x.total) + '</strong></li>';
+          var subC = Number(x.subtotal || 0);
+          var ivaC = Number(x.iva !== undefined ? x.iva : (subC * 0.16));
+          var totC = Number(x.total || (subC + ivaC));
+          pdfLines.push('CFDI #' + (idxCfdi + 1) + ' [' + x.uuid + '] (' + (x.fecha || '2026-11') + ' | ' + x.metodo + ') -> Subtotal: ' + fmtMXN(subC) + ' + IVA 16%: ' + fmtMXN(ivaC) + ' = Total CFDI: ' + fmtMXN(totC));
+          pdfLines.push('  Emisor: ' + emR + ' (' + (x.nombre || '') + ') | Receptor: ' + recR);
+          return '<li class="py-1 border-b border-[var(--border-shoji)] font-mono-num"><strong>UUID: ' + esc(x.uuid) + '</strong> (' + esc(x.fecha || '2026-11') + ' · ' + esc(x.metodo) + ') · Subtotal: ' + fmtMXN(subC) + ' + IVA (16%): <strong>' + fmtMXN(ivaC) + '</strong> = Total CFDI: <strong>' + fmtMXN(totC) + '</strong><div class="text-[10px] text-[var(--text-secondary)]">Emisor: <strong>' + esc(emR) + '</strong> (' + esc(x.nombre) + ') → Receptor: <strong>' + esc(recR) + '</strong></div></li>';
         }).join('');
         pdfLines.push('--- Hallazgos de Auditoria Preventiva (' + activeFindingsOnly.length + ' alertas activas) ---');
         var alertsHtml = activeFindingsOnly.map(function(f) {
@@ -7804,7 +7866,7 @@
         } else if (r.bank) {
           var uOrph = calcUnifiedDiotBaseAndIva(r.bank.amount);
           lines.push([
-            '04', '85', 'SIN_CFDI_XML', (r.bank.concepto || 'DEPOSITO_HUERFANO'), fallbackReceptor,
+            '04', '85', 'Sin CFDI', 'Sin CFDI', fallbackReceptor,
             (r.bank.id + '_' + (r.bank.ref || 'S/R')), (r.bank.fecha || ''), 'SPEI_SIN_XML',
             uOrph.baseStr, uOrph.ivaStr, uOrph.totStr,
             'HUERFANO_SIN_CFDI', (r.cuenta || '205-01')
@@ -9128,9 +9190,9 @@
           var activeXmlsPol = APP_STATE.mode === 'OWN_FILES' ? scopedPol.xmls : (APP_STATE.xmlInvoices || []);
           var defaultRecRfc = (activeXmlsPol[0] && activeXmlsPol[0].receptorRfc) ? activeXmlsPol[0].receptorRfc : (APP_STATE.activeRfc || 'XAXX010101000');
           var rows = APP_STATE.reconciliationRows.map(function(r) {
-            var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'SIN XML';
-            var emisorRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.emisorRfc || m.rfc || 'XAXX010101000'; }).join(' + ') : 'SIN RFC EMISOR';
-            var emisorNames = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.nombre || ''; }).join(' + ') : (r.bank.concepto || '');
+            var uuids = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.uuid; }).join(' + ') : 'Sin CFDI';
+            var emisorRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.emisorRfc || m.rfc || 'XAXX010101000'; }).join(' + ') : 'Sin CFDI';
+            var emisorNames = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.nombre || ''; }).join(' + ') : 'Sin CFDI';
             var receptorRfcs = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.receptorRfc || defaultRecRfc; }).join(' + ') : defaultRecRfc;
             var metodos = (r.matched && r.matched.length) ? r.matched.map(function(m) { return m.metodo || 'PUE'; }).join(' + ') : 'SPEI';
             var subSum = (r.matched && r.matched.length) ? r.matched.reduce(function(acc, m) { return acc + Number(m.subtotal || 0); }, 0).toFixed(2) : '0.00';
